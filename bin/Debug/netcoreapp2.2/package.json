@@ -1,0 +1,20 @@
+{
+  "name": "Scripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Eval.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "brainjs": "^0.7.4",
+    "fs-extra": "^7.0.1",
+    "fuzzyset.js": "0.0.8",
+    "lodash": "^4.17.11",
+    "path": "^0.12.7",
+    "xhr-request": "^1.1.0"
+  }
+}

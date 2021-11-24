@@ -1,0 +1,142 @@
+[
+  {
+    "botid": "03004AA50300CAAD0500E8DA0500B8F6060001000400502E0400B0440400F06D0400EEAA01007E670200D0D309007469",
+    "activity": "main",
+    "step": 0,
+    "conversation": {
+      "inputTerm": "how are you",
+      "paramaters": [ "", "" ],
+      "responsePrefix": "",
+      "responseText": "I am very well. Thank you how about you?",
+      "moveActivity": "main",
+      "moveStep": 1,
+      "responseHtml": "",
+      "responseSuffix": "",
+      "responseScript": "",
+      "ApiResponse": {
+        "Url": "",
+        "method": "",
+        "headers": [ { "": "" } ],
+        "payload": "",
+        "authentication": {
+          "type": "",
+          "credentials": { "": "" }
+        },
+        "callActivity": {
+          "activityName": "main",
+          "step": 1
+        }
+      },
+      "errormessage": {
+        "message": "",
+        "speak": true,
+        "details": ""
+      }
+    }
+  },
+  {
+    "botid": "03004AA50300CAAD0500E8DA0500B8F6060001000400502E0400B0440400F06D0400EEAA01007E670200D0D309007469",
+    "activity": "main",
+    "step": 1,
+    "conversation": {
+      "inputTerm": "",
+      "paramaters": [ "", "" ],
+      "responsePrefix": "",
+      "responseText": "Now I am in second step of conversation,  I can't detect how you feel, but I am on that. How old are you?",
+      "moveActivity": "main",
+      "moveStep": 2,
+      "responseHtml": "",
+      "responseSuffix": "",
+      "responseScript": "",
+      "ApiResponse": {
+        "Url": "",
+        "method": "",
+        "headers": [ { "": "" } ],
+        "payload": "",
+        "authentication": {
+          "type": "",
+          "credentials": { "": "" }
+        },
+        "callActivity": {
+          "activityName": "",
+          "step": 0
+        }
+      },
+      "errormessage": {
+        "message": "",
+        "speak": true,
+        "details": ""
+      }
+    }
+  },
+  {
+    "botid": "03004AA50300CAAD0500E8DA0500B8F6060001000400502E0400B0440400F06D0400EEAA01007E670200D0D309007469",
+    "activity": "main",
+    "step": 2,
+    "conversation": {
+      "inputTerm": "",
+      "paramaters": [ "", "" ],
+      "responsePrefix": "",
+      "responseText": "Conversation 3rd step. I can't believe your age...",
+      "moveActivity": "",
+      "moveStep": 0,
+      "responseHtml": "",
+      "responseSuffix": "",
+      "responseScript": "",
+      "ApiResponse": {
+        "Url": "",
+        "method": "",
+        "headers": [ { "": "" } ],
+        "payload": "",
+        "authentication": {
+          "type": "",
+          "credentials": { "": "" }
+        },
+        "callActivity": {
+          "activityName": "",
+          "step": 0
+        }
+      },
+      "errormessage": {
+        "message": "",
+        "speak": true,
+        "details": ""
+      }
+    }
+  },
+  {
+    "botid": "",
+    "activity": "",
+    "step": 0,
+    "conversation": {
+      "inputTerm": "what time is it?",
+      "paramaters": [ "", "" ],
+      "responsePrefix": "",
+      "responseText": "",
+      "moveActivity": "",
+      "moveStep": 0,
+      "responseHtml": "",
+      "responseSuffix": "",
+      "responseScript": "('Current time is '+ getdate());",
+      "ApiResponse": {
+        "Url": "",
+        "method": "",
+        "headers": [ { "": "" } ],
+        "payload": "",
+        "authentication": {
+          "type": "",
+          "credentials": { "": "" }
+        },
+        "callActivity": {
+          "activityName": "",
+          "step": 0
+        }
+      },
+      "errormessage": {
+        "message": "",
+        "speak": true,
+        "details": ""
+      }
+    }
+  }
+]

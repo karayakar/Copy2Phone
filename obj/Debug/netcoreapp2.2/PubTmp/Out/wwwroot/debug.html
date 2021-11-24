@@ -1,0 +1,831 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>AKAIS BOT debug</title>
+    <!-- Bootstrap Core CSS -->
+    <link href="Assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- MetisMenu CSS -->
+    <link href="Assets/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="Assets/dist/css/sb-admin-2.css" rel="stylesheet">
+    <!-- Custom Fonts -->
+    <link href="Assets/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <!-- jQuery -->
+    <!--<script src="Assets/vendor/jquery/jquery.min.js"></script>
+    <!-- Bootstrap Core JavaScript
+    <script src="Assets/vendor/bootstrap/js/bootstrap.min.js"></script>
+    <!-- Metis Menu Plugin JavaScript
+    <script src="Assets/vendor/metisMenu/metisMenu.min.js"></script>
+    <!-- Custom Theme JavaScript
+    <script src="Assets/dist/js/sb-admin-2.js"></script>
+    <script src="js/lodash.js"></script>
+    <script src="Assets/js/fuzzy.js"></script>
+    <script src="js/axios.js"></script>-->
+    <!--<link href="css/jsoneditor.min.css" rel="stylesheet" />
+    <script src="js/jsoneditor.min.js"></script>-->
+    <!--<script src="Assets/js/jquery.js"></script>-->
+    <script>
+        function check(inputSentence, arrayDictionary) {
+            if (!arrayDictionary) {
+                arrayDictionary = ["how are you", "how", "are", "you"];
+            }
+            FuzzySet().useLevenshtein = true;
+            FuzzySet().lower = 3;
+            FuzzySet().upper = 6;
+            FuzzySet().min_match_score = 0.33;
+            var result = FuzzySet(arrayDictionary);
+            return result.get(inputSentence);
+        }
+
+        function inputSentence(input) {
+
+            input = cleanStr(input);
+            var wordArray = input.split(' ');
+            var inputdict = input.replace(/ /g, '\r\n');
+            console.log(input);
+            console.log(wordArray);
+            console.log(inputdict);
+            var resultWhole = check(input);
+            var unknownWords = wordArray;
+            var knownWords = [];
+            console.log(resultWhole);
+            for (var i = 0; i < wordArray.length; i++) {
+                var result = check(wordArray[i]);
+
+                if (result) {
+                    knownWords.push({ Score: result[0][0], Word: result[0][1] });
+                    for (var j = 0; j < unknownWords.length - 1; j++) {
+                        if (unknownWords[j] === result[0][1]) {
+                            unknownWords.splice(j, 1);
+                        }
+                    }
+
+                }
+            }
+            console.log('unknown words');
+            console.log(unknownWords);
+            console.log('known words');
+            console.log(knownWords);
+            console.log('best possibility');
+            console.log(resultWhole);
+        }
+
+        function cleanStr(s) {
+            s = s.replace(/[&\/\\#+()$~%'"*<>{}]/g, '');
+            s = s.replace(/[;:,.?]/g, ' ');
+            return s;
+        }
+
+
+        var conversation = {
+            "botid": "",
+            "activity": "",
+            "step": 0,
+            "conversation": {
+                "inputTerm": "what time is it?",
+                "paramaters": ["", ""],
+                "responsePrefix": "",
+                "responseText": "ignored",
+                "moveActivity": "",
+                "moveStep": 0,
+                "responseHtml": "",
+                "responseSuffix": "",
+                "responseScript": "('Current time is '+ getdate());",
+                "ApiResponse": {
+                    "Url": "",
+                    "method": "",
+                    "headers": [
+                        {
+                            "key": "",
+                            "value": ""
+                        }
+                    ],
+                    "payload": "",
+                    "authentication": {
+                        "type": "",
+                        "credentials": [
+                            {
+                                "key": "",
+                                "value": ""
+                            }
+                        ]
+                    }
+                }
+            }
+        };
+
+
+        function dataObj(expression, step, name, botid) {
+            var dataObject = {
+                Expression: expression,
+                Step: step,
+                Name: name,
+                BotId: botid
+            };
+            return dataObject;
+        }
+
+        //variables
+        var activeInput = {};
+
+        function getConversationState(botid, activity, step) {
+
+            _.find(conversation, function (o) {
+                return o.botid === botid && o.activity === activity && o.step === step;
+            });
+
+            _.find(conversation, function (o) {
+                return o.botid === botid && o.activity === activity;
+            });
+
+            _.find(conversation, function (o) {
+                return o.botid === botid;
+            });
+
+        }
+
+        function runtest(callback, input) {
+            var dataInput = dataObj();
+            var botid = 0;
+            var exp = '';
+            var step = 0;
+            var activity = "";
+            try {
+                dataInput = JSON.parse(input);
+                if (dataInput && dataInput.BotId) {
+                    botid = dataInput.BotId;
+                }
+                if (dataInput && dataInput.Expression) {
+                    exp = dataInput.Expression;
+                }
+                if (dataInput && dataInput.Step) {
+                    step = dataInput.Step;
+                }
+                if (dataInput && dataInput.Name) {
+                    activity = dataInput.Name;
+                }
+            } catch (e) {
+                exp = '';
+                dataInput = '';
+                activity = '';
+                callback(null, "I am having trouble to process, I can't help with that right now.");
+            }
+
+            var conversationState = getConversationState(botid, activity, step);
+            if (conversationState) {
+                callback(null, conversationState.responseText);
+            } else {
+                callback(null, "Error in conversation. I can't find conversation state.");
+            }
+
+        }
+
+    </script>
+
+
+</head>
+<body>
+    <div id="wrapper">
+        <!-- Navigation -->
+
+        <div id="akaisbot" style="display:none" :style="[loaded ? '':{display:'none'}]" ref="akaisbot">
+            <!--<div>
+
+                <forms v-for="(data,index) in botObj"
+                       v-bind:key="index"
+                       v-bind:data="data"></forms>
+
+            </div>-->
+            <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="index.html">AKAIS BOT</a>
+                </div>
+
+                <div class="navbar-default sidebar" role="navigation" :style="[isLoggedIn ? '' : {display:'none'}]">
+
+                    <div class="sidebar-nav navbar-collapse">
+
+                        <ul id="side-menu" class="nav">
+                            <li>
+                                <a href="#"><i class="fa fa-dashboard fa-fw"></i> Conversations</a>
+                            </li>
+                            <li v-for="(item, index) in botObj">
+                                <a href="#" @click="itemClicked(index)">
+                                    <i class="fa fa-files-o fa-fw"></i><small>
+                                        Activity:{{item.activity}} | Step:{{item.Step}}<br>Input:<br /><b>{{item.conversation.inputTerm}}</b><br>
+                                        Out:<br /><b>{{item.conversation.responseText}}</b>
+                                    </small>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- /.sidebar-collapse -->
+                </div>
+                <!-- /.navbar-static-side -->
+            </nav>
+            <div class="row" :style="[isLoggedIn ? {display:'none'}:''  ]">
+                <div class="col-lg-3">
+
+                </div>
+                <div class="col-lg-6">
+                    <br /><br />
+                    <div class="panel panel-primary">
+                        <div class="panel-heading">
+                            Login to your bot
+                        </div>
+                        <div class="panel-body">
+                            <p>
+                                <br />
+                                <input name="inputbotid" v-validate="'required'" id="inputbotid" v-model="botId" class="form-control" placeholder="BotId">
+                                <span>{{ errors.first('inputbotid') }}</span>
+                                <br /><br />
+                                <button type="button" id="getMyBot" @click="botloginClick" class="btn btn-default pull-right">Submit</button>
+                                <!--<button type="button" id="saveAll" class="btn btn-default pull-right">Save All</button>-->
+                            </p>
+                        </div>
+                        <div class="panel-footer">
+
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3"></div>
+
+
+            </div>
+            <div id="page-wrapper" :style="[isLoggedIn ? '' : {display:'none'}]">
+                <br /><br />
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        Bot Suite
+                    </div>
+                    <!-- /.panel-heading -->
+                    <div class="panel-body">
+                        <!-- Nav tabs -->
+
+                        <ul class="nav nav-tabs">
+                            <li :class="[activeTab=='debug'?'active':'']">
+                                <a href="#debug" data-toggle="tab" @click="tabChange('debug');" aria-expanded="true">Debug</a>
+                            </li>
+                            <li :class="[activeTab=='quick'?'active':'']">
+                                <a href="#quick" data-toggle="tab" @click="tabChange('quick');" aria-expanded="true">Quick Add</a>
+                            </li>
+                            <li :class="[activeTab=='test'?'active':'']">
+                                <a href="#test" data-toggle="tab" @click="tabChange('test');" aria-expanded="false">Test</a>
+                            </li>
+
+                        </ul>
+
+                        <!-- Tab panes -->
+                        <div class="tab-content">
+                            <div class="tab-pane fade active in" id="debug" :class="[activeTab=='debug'?'active in':'tab-pane fade']" :style="[activeTab=='debug'?'':{display:'none'}]">
+
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                Conversation
+                                            </div>
+                                            <div class="panel-body" v-if="activeConversation!=null">
+                                                <template>
+                                                    <div class="row">
+                                                        <div class="col-lg-6">
+                                                            <form role="form">
+                                                                <div class="form-group">
+                                                                    <label>Activity Name</label>
+                                                                    <input name="inputactivityname" v-model="activeConversation.activity" id="inputactivityname" class="form-control">
+                                                                    <p class="help-block">Example Activity name.</p>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Step</label>
+                                                                    <input name="inputstep" v-model="activeConversation.step" id="inputstep" class="form-control">
+                                                                    <p class="help-block">Example Step.</p>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Input Term</label>
+                                                                    <input name="inputexpression" v-model="activeConversation.conversation.inputTerm" id="inputexpression" class="form-control">
+                                                                    <p class="help-block">Example expression (Received input).</p>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Response</label>
+                                                                    <input name="responseout" v-model="activeConversation.conversation.responseText" id="responseout" class="form-control">
+                                                                    <p class="help-block">Example expression (Received input).</p>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Move to Activity</label>
+                                                                    <input name="moveActivity" v-model="activeConversation.conversation.moveActivity" id="moveActivity" class="form-control">
+                                                                    <p class="help-block">Move conversation into another activity</p>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Move to step</label>
+                                                                    <input name="moveStep" v-model="activeConversation.conversation.moveStep" id="moveStep" class="form-control">
+                                                                    <p class="help-block">Move Another Step</p>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Script Response</label>
+<textarea id="responsescript" name="responsescript" class="form-control" rows="5" v-model="activeConversation.conversation.responseScript"></textarea>
+                                                                    <p class="help-block">JS eval(input).</p>
+                                                                </div>
+                                                                <button type="button" id="creteinput" @click="creteinput" class="btn btn-default">Add New</button>
+                                                                <button type="button" id="saveinput" @click="saveinput" class="btn btn-default">Save</button>
+                                                                <button type="button" id="deleteinput" @click="deleteinput" class="btn btn-default">Delete</button>
+                                                                <button type="button" id="clearinput" @click="clearinput" class="btn btn-default">Clear</button>
+                                                            </form>
+
+
+                                                        </div>
+                                                        <div class="col-lg-6">
+                                                            <form role="form">
+                                                                <div class="form-group">
+                                                                    <label>Invoke Http Url</label>
+                                                                    <input name="httpurl" v-model="activeConversation.conversation.ApiResponse.Url" id="httpurl" class="form-control">
+                                                                    <p class="help-block">Example http://www.myotherapi/.....</p>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label>Method</label>
+                                                                    <select class="form-control" v-model="activeConversation.conversation.ApiResponse.method" name="method" id="method">
+                                                                        <option value="GET">GET</option>
+                                                                        <option value="POST">POST</option>
+                                                                    </select>
+
+                                                                </div>
+                                                                <div class="form-group" name="headers" id="headers">
+                                                                    <label>Headers</label>
+                                                                    <button type="button" @click="addHeaderValue()" class="btn btn-info btn-circle">
+                                                                        <i class="fa fa-plus"></i>
+                                                                    </button>
+                                                                    <div v-for="(item , index) in activeConversation.conversation.ApiResponse.headers">
+                                                                        <div class="row">
+                                                                            <div class="col-lg-5">
+                                                                                <label>Key</label><input name="headerKey" v-model="item.key" id="headerKey" class="form-control">
+                                                                            </div>
+                                                                            <div class="col-lg-5">
+                                                                                <label>Value</label>
+                                                                                <input name="headerValue" v-model="item.value" id="headerValue" class="form-control">
+                                                                            </div>
+                                                                            <div class="col-lg-2">
+                                                                                <button type="button" @click="removeHeaderValue(index)" class="btn btn-danger btn-circle">
+                                                                                    <i class="fa fa-minus"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                </div>
+                                                                <div class="form-group" name="payload" id="payload">
+                                                                    <label>Payload</label>
+                                                                    <textarea id="payload" name="payload" v-model="activeConversation.conversation.ApiResponse.payload" class="form-control" rows="3"></textarea>
+                                                                </div>
+                                                                <div class="form-group">
+
+                                                                    <button type="button" id="testcall" @click="testcall" class="btn btn-default">Test</button>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <textarea id="responsebox" name="responsebox" ref="responsebox" class="form-control" rows="3"></textarea>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+
+                                                    </div>
+                                                </template>
+
+
+                                                <!-- /.row (nested) -->
+                                            </div>
+                                            <!-- /.panel-body -->
+                                        </div>
+                                        <!-- /.panel -->
+                                    </div>
+                                    <!-- /.col-lg-12 -->
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="quick" :class="[activeTab=='quick'?'tab-pane fade active in':'tab-pane fade']" :style="[activeTab=='quick'?'':{display:'none'}]">
+                                <h4>Quick Add</h4>
+                                <div class="row">
+                                    <div class="col-lg-6">
+
+                                        <div class="form-group">
+                                            <label>
+                                                One line question starts with Q: following line answer starts with A:<br />
+                                                <br />Q:Question .....? <br />A:answer.....
+                                            </label>
+                                            <textarea id="quickadd" name="quickadd" v-model="quickAddText" class="form-control" rows="30"></textarea>
+                                            <br />
+                                            <button class="btn  btn-sm" @click="processQuickAdd()" id="btn-process">
+                                                Process
+                                            </button>
+                                        </div>
+
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <template>
+                                            <div v-if="quickadd">
+                                                <div class="" v-for="(item, index) in quickadd">
+                                                    {{item.question}}
+                                                    <br />{{item.answer}}
+                                                </div>
+                                            </div>
+                                        </template>
+
+
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+
+                            <div class="tab-pane fade" id="test" :class="[activeTab=='test'?'tab-pane fade active in':'tab-pane fade']" :style="[activeTab=='test'?'':{display:'none'}]">
+                                <h4>Bot test</h4>
+                                <div class="chat-panel panel panel-default">
+                                    <div class="panel-heading">
+                                        <i class="fa fa-comments fa-fw"></i> Chat with your bot
+
+                                    </div>
+                                    <!-- /.panel-heading -->
+                                    <div class="panel-body" id="chatwindowholder">
+                                        <div v-if="chatConversations.length>0">
+                                            <template>
+                                                <ul class="chat" id="chatwindow" ref="chatwindow">
+                                                    <li class="left clearfix" v-for="(item,index) in chatConversations">
+                                                        <div v-if="item.from=='you'">
+                                                            <span class="chat-img pull-left">
+                                                                <img src="http://placehold.it/50/55C1E7/fff" alt="User Avatar" class="img-circle">
+                                                            </span>
+                                                            <div class="chat-body clearfix">
+                                                                <div class="header">
+                                                                    <strong class="primary-font">You ({{item.Activity}} | {{item.Step}})</strong>
+                                                                    <small class="pull-right text-muted">
+                                                                        <i class="fa fa-clock-o fa-fw"></i> {{item.Time | formatDate}}
+                                                                    </small>
+                                                                </div>
+                                                                <p>
+                                                                    <br />
+                                                                    {{item.Expression}}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div v-if="item.from=='bot'">
+                                                            <span class="chat-img pull-right">
+                                                                <img src="http://placehold.it/50/FA6F57/fff" alt="User Avatar" class="img-circle">
+                                                            </span>
+                                                            <div class="chat-body clearfix">
+                                                                <div class="header">
+                                                                    <small class=" text-muted">
+                                                                        <i class="fa fa-clock-o fa-fw"></i>{{item.Time | formatDate}}
+                                                                    </small>
+                                                                    <strong class="pull-right primary-font">BOT ( {{item.Activity}} | {{item.Step}})</strong>
+                                                                </div>
+                                                                <p class="pull-left">
+                                                                    <br />
+                                                                    {{item.Expression}}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                </ul>
+                                            </template>
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- /.panel-body -->
+                                    <div class="panel-footer">
+                                        <div class="row">
+                                            <div class="col-lg-8">
+
+                                                <input id="chat-message" type="text" v-model="currentChatSendItem.Expression" v-on:keyup.enter="sendMessage()" class="form-control input-sm" placeholder="Type your message here...">
+
+                                            </div>
+                                            <div class="col-lg-2">
+                                                <input id="chat-activity" type="text" v-model="currentChatSendItem.Activity" class="form-control input-sm" placeholder="Activity">
+
+
+                                            </div>
+                                            <div class="col-lg-1">
+                                                <input id="chat-step" type="text" v-model="currentChatSendItem.Step" class="form-control input-sm" placeholder="Step">
+                                            </div>
+                                            <div class="col-lg-1">
+                                                <span class="input-group-btn">
+                                                    <button class="btn btn-warning btn-sm" @click="sendMessage()" id="btn-chat">
+                                                        Send
+                                                    </button>
+                                                </span>
+                                            </div>
+
+                                        </div>
+
+
+                                    </div>
+                                    <!-- /.panel-footer -->
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <!-- /.panel-body -->
+                </div>
+
+
+                <!-- /.row -->
+                <!-- /.row -->
+            </div>
+
+            <!-- /#page-wrapper -->
+        </div>
+    </div>
+
+
+    <script src="lib/vue/vue.js"></script>
+    <script src="js/axios.js"></script>
+    <script src="js/moment.js"></script>
+
+    <script src="Vue/vee-validate.js"></script>
+    <script src="Vue/en.js"></script>
+    <script>
+       var dict = {
+            custom: {
+                inputbotid: {
+                    required: 'Bot Id is required..'
+                },
+                name: {
+                    required: () => 'Your name is empty'
+                }
+            }
+        };
+
+        this.VeeValidate.Validator.localize('en', dict);
+        Vue.use(VeeValidate);
+        Vue.filter('formatDate', function (value) {
+            if (value) {
+                return moment(String(value)).format('MM/DD/YYYY hh:mm')
+            }
+        });
+        var forms = Vue.component('forms', {
+            props: ['data'],
+            template: `
+<div v-if="data.botid!='test'">
+<div class="blog-post"><h3>{{ data.botid }}</h3></div>
+</div>
+<div v-else>
+<!--<div class="blog-post"><h3>Else:{{ data.botid }}</h3></div>-->
+</div>
+`
+        });
+        var debugApp= new Vue({
+            el: '#akaisbot',
+            component: {
+                'forms': forms
+
+            },
+            data: {
+                loaded: false,
+                botId: null,
+                botObj: null,
+                loggedIn: false,
+                isLoggedIn: false,
+                botMessage: { "botid": "", "activity": "", "step": 0, "conversation": { "inputTerm": "", "paramaters": ["", ""], "responsePrefix": "", "responseText": "", "moveActivity": "main", "moveStep": 0, "responseHtml": "", "responseSuffix": "", "responseScript": "", "ApiResponse": { "Url": "", "method": "", "headers": [{ "key": "", "value": "" }], "payload": "", "authentication": { "type": "", "credentials": [{ "key": "", "value": "" }] }, "callActivity": { "activityName": "", "step": 0 } }, "errormessage": { "message": "", "speak": true, "details": "" } } },
+                test: "test",
+                inputactivityname: "test",
+                subscribers: [],
+                isViewReady: false,
+                activeTab: 'debug',
+                activeConversation: null,
+                activeConversationObjectId: -1,
+                chatConversations: [],
+                currentChatSendItem: { "botid": "",  "Activity": "", "Step":0, "Expression": "" },
+                audioDing: new Audio('assets/ding.mp3'),
+                audioDong: new Audio('assets/dong.mp3'),
+                quickAddText:null,
+                quickadd:[]
+            },
+            methods: {
+                testcall() {
+                    var method = this.activeConversation.conversation.ApiResponse.method;
+                    var url = this.activeConversation.conversation.ApiResponse.Url;
+                    if (method === 'GET') {
+
+                        this.httpget(url).then(response => {
+                            var elem = document.getElementById('responsebox');
+                            if (elem) {
+
+                                elem.value = JSON.stringify(response);
+                            }
+
+                        });
+
+
+                    }
+                },
+                processQuickAdd() {
+                    if (this.quickAddText) {
+                        var lines = this.quickAddText.split('\n');
+                        var question = null;
+                        var answer = null;
+                        for (var i = 0; i < lines.length; i++) {
+                            if (lines[i].indexOf('Q:') != -1) {
+                                question = lines[i].replace('Q:','');
+                            }
+                            if (lines[i].indexOf('A:') != -1) {
+                                answer = lines[i].replace('A:', '');
+                            }
+                            if (question && answer) {
+                                var activity = JSON.parse(JSON.stringify(this.botMessage));
+                                activity.botid = this.botId;
+                                activity.conversation.inputTerm = question;
+                                activity.conversation.responseText = answer;
+                                //debugger;
+                                this.botObj.push(JSON.parse(JSON.stringify(activity)));
+                                question = null;
+                                answer = null;
+                            }
+
+                            //code here using lines[i] which will give you each line
+                        }
+                    }
+                },
+                tabChange: function (tab) {
+                    if (tab) {
+                        this.activeTab = tab;
+                    }
+                },
+                botloginClick: function (event) {
+
+                    var botid = this.botId;
+                    if (botid) {
+                        this.httpget("api/nodejs/getbotconfig?botid=" + botid).then(response => {
+                            this.isLoggedIn = true;
+                            this.botObj = response;
+                            if (localStorage) {
+                                localStorage.setItem('botid', this.botId);
+                            }
+                        });
+
+                    } else {
+                        alert('please specify botid');
+                    }
+                },
+                itemClicked: function (a) {
+                    this.activeTab = 'debug';
+                    if (a!=null) {
+                        this.activeConversationObjectId = a;
+                        this.activeConversation = JSON.parse(JSON.stringify(this.botObj[a]));
+                    }
+
+                },
+                scrolldiv: function (e) {
+
+                    Vue.nextTick()
+                        .then(function () {
+                            if (e) {
+
+                            } else {
+                                e = 'chatwindowholder';
+                            }
+                            var elem = document.getElementById(e);
+                            if (elem) {
+                                var scHeight = elem.scrollHeight;
+                                elem.scrollTo(0, elem.scrollHeight + 200);
+                            }
+                        });
+
+                },
+                sendMessage: function () {
+                    if (this.currentChatSendItem.Expression != '') {
+                        var data = JSON.parse(JSON.stringify(this.currentChatSendItem));
+                        this.currentChatSendItem.Expression = '';
+                        data.botid = this.botId;
+                        var url = 'api/nodejs/Eval';
+                        var pushToScreen = data;
+                        pushToScreen.Time = moment(String(new Date())).format('MM/DD/YYYY hh:mm');
+                        pushToScreen.from = 'you';
+                        this.chatConversations.push(pushToScreen);
+                        this.audioDing.play();
+                        this.httppost(url, data).then(response => {
+                            if (response) {
+                                response.data.Time = moment(String(new Date())).format('MM/DD/YYYY hh:mm');
+                                response.data.from = 'bot';
+                                this.audioDong.play();
+                                this.chatConversations.push(response.data);
+                                this.scrolldiv('chatwindowholder');
+                            }
+                        });
+                    } else {
+                        alert('please type a message to your bot.');
+                    }
+                    //debugger;
+                    //this.$refs.chatwindow.scrollTop = this.$refs.chatwindow.scrollHeight;
+                },
+                creteinput: function () {
+                    this.botObj.push(this.activeConversation);
+                    this.activeConversationObjectId = this.botObj.length ;
+
+                },
+                saveinput: function () {
+                    this.botObj[this.activeConversationObjectId] = JSON.parse(JSON.stringify(this.activeConversation));
+                    this.botObj = JSON.parse(JSON.stringify(this.botObj));
+                    console.log(this.botObj);
+                    console.log(JSON.stringify(this.botObj));
+                    var url = "api/nodejs/saveBot?botid=" + this.botId;
+                    var data = this.botObj;
+                    this.httppost(url, data).then(() => { alert('Saved');});
+                },
+                deleteinput: function () {
+                    this.botObj.pop([this.activeConversationObjectId], 1);
+                    this.botObj = JSON.parse(JSON.stringify(this.botObj));
+                    this.activeConversation = null;
+                    this.activeConversationObjectId = -1;
+                },
+                clearinput: function () {
+                    this.activeConversation = null;
+                    this.activeConversationObjectId = -1;
+                },
+                addHeaderValue: function () {
+                    if (this.activeConversation && this.activeConversation.conversation && this.activeConversation.conversation.ApiResponse) {
+                        this.activeConversation.conversation.ApiResponse.headers.push({"key":"","value":""});
+                    }
+                },
+                removeHeaderValue: function (a) {
+                    if (this.activeConversation && this.activeConversation.conversation && this.activeConversation.conversation.ApiResponse) {
+                        this.activeConversation.conversation.ApiResponse.headers.pop(a,1);
+                    }
+                },
+                httpget: function (url) {
+                    return axios.get(url)
+                        .then(response => {
+                            return response.data
+                        });
+
+                },
+                httppost: function (url, data) {
+
+                    return axios.post(url,data)
+                        .then(response => {
+
+                            return response;
+                        });
+
+
+                },
+                clearinput: function () {
+                    inputactivityname = "";
+                },
+                refreshData: function () {
+                    this.isViewReady = false;
+
+                },
+            },
+
+            created: function () {
+                this.loaded = true;
+
+                this.botId = '';
+                var botid = '';
+                if (localStorage) {
+                    botid = localStorage.getItem('botid');
+                }
+                if (botid) {
+                    this.botId = botid;
+                } else {
+                  //  alert('please specify botid');
+                }
+                Vue.nextTick()
+                    .then(function () {
+
+                        var elem = document.getElementById('akaisbot');
+                        if (elem) {
+                            elem.removeAttribute('style');
+                        }
+                    });
+            },
+
+            mounted() {
+                this.loaded = true;
+              //  initial;
+               // this.scrollDiv();
+            }
+        });
+
+
+    </script>
+</body>
+
+</html>

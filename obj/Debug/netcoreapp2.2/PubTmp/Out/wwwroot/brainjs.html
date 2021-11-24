@@ -1,0 +1,88 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="lib/brainjs/browser.min.js"></script>
+    <Script>
+        let trainedNet;
+
+        const trainingData = [
+            {
+                input: "Inside Chi's nursery",
+                output: {
+                    a_1: 1
+                },
+                answer: ""
+            }, {
+                input: "Why I dyed my hair pink",
+                output: {
+                    a_2: 1
+                },
+                answer: ""
+            }, {
+                input: "Feeling Blue (wearing @kkwbeauty powder contour in medium & dark contour kit as eye shadow, & a new lip coming soon)",
+                output: {
+                    a_3: 1
+                },
+                answer: ""
+            }, {
+                input: "I will be interviewed by @JudgeJeanine on @FoxNews at 9:00 P.M. Enjoy!",
+                output: {
+                    a_4: 1
+                },
+                answer: ""
+            }
+            , {
+                input: "powder contour in medium & dark contour kit as eye shadow Feeling Blue (wearing @kkwbeauty , & a new lip coming soon)",
+                output: {
+                    a_5: 1
+                },
+                answer: ""
+            }
+            , {
+                input: " @JudgeJeanine on @FoxNews at 9:00 P.M. Enjoy!",
+                output: {
+                    a_6: 1
+                },
+                answer: ""
+            }
+        ]
+
+        function encode(arg) {
+            return arg.split('').map(x => (x.charCodeAt(0) / 255));
+        }
+
+        function processTrainingData(data) {
+            return data.map(d => {
+                debugger;
+                return {
+                    input: encode(d.input),
+                    output: d.output,
+                    //answer: d.answer
+                }
+            })
+        }
+
+        function train(data) {
+            let net = new brain.NeuralNetwork();
+            net.train(processTrainingData(data));
+            trainedNet = net.toFunction();
+            console.log('Finished training...');
+        };
+
+        function execute(input) {
+            let results = trainedNet(encode(input));
+            debugger;
+            let output;
+            results.trump > results.kardashian ? output = 'Trump' : output = 'Kardashian';
+            return output;
+        }
+        train(trainingData);
+
+    </Script>
+</head>
+<body>
+
+</body>
+</html>

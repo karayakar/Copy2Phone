@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="js/handlebars.js"></script>
+    <script src="js/jquery.min.js"></script>
+    <!--<script src="js/Observe.js"></script>-->
+    <script src="js/watch.js"></script>
+</head>
+<body>
+    <script id="entry-template" type="text/x-handlebars-template">
+        <div class="post">
+            <h1>By {{fullName author}}</h1>
+            <div class="body">{{body}}</div>
+            <h1>Comments</h1>
+            {{#if comments}}
+            <ul>
+                {{#each comments}}
+                <li>
+                    By {{fullName author}}
+                    <div class="body">{{body}}</div>
+                </li>
+                {{/each}}
+            </ul>
+            {{/if}}
+        </div>
+    </script>
+    <div id="entry-templatehtml"></div>
+    <script>
+
+        //var context = { title: "My New Post", body: "This is my first post!" };
+        var context = {
+            author: { firstName: "Alan", lastName: "Johnson" },
+            body: "I Love Handlebars",
+            comments: [
+                {
+                    author: { firstName: "Yehuda", lastName: "Katz" },
+                    body: "Me too!"
+                },
+                {
+                    author: { firstName: "test", lastName: "akar" },
+                    body: "Me too!"
+                }
+            ]
+        };
+
+        Handlebars.registerHelper('fullName', function (person) {
+            return person.firstName + " " + person.lastName;
+        });
+
+        function renderTemplate(Source, data, target, observe, watcher, precompiled) {
+            if (precompiled) {
+                document.getElementById(target).innerHTML = Source;
+            } else {
+
+                var source = document.getElementById(Source).innerHTML;
+                var template = Handlebars.compile(source);
+                document.getElementById(target).innerHTML = template(data);
+            }
+            if (observe && !watcher) {
+                debugger;
+                data._element = {};
+                data._element.source = Source;
+                data._element.target = target;
+                data._element.observe = observe;
+                watch(data, function () {
+                    renderTemplate(data._element.source, data, data._element.target, data._element.observe, true);
+                });
+            }
+        };
+
+        $(document).ready(function () {
+            // renderTemplate("entry-template", context, "entry-templatehtml",true);
+        });
+
+        var handlebarsTemplates = {};
+        $(function () {
+
+            // Compile all templates
+            $('script[type="text/x-handlebars-template"]').each(function (index, element) {
+                var $element = $(element),
+                    partialName = $element.attr('data-register-partial-as');
+                self.handlebarsTemplates[element.id] = Handlebars.compile($element.html());
+                if (partialName) {
+                    Handlebars.registerPartial(partialName, $element.html());
+                }
+            });
+
+            // Use
+            var data = {};
+            var html = handlebarsTemplates['entry-template'](context);
+            renderTemplate(html, data, "entry-templatehtml", false, false, true);
+            console.log(html);
+        });
+    </script>
+    <script src="js/loader.js"></script>
+</body>
+</html>

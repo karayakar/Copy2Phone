@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "ProjectMap": {
+    "1fc0d05a-7c77-4164-8d9c-8ba0605c973b": {
+      "ProjectGuid": "1fc0d05a-7c77-4164-8d9c-8ba0605c973b",
+      "DisplayName": "CopyToPhone",
+      "ColorIndex": 0
+    }
+  },
+  "NextColorIndex": 1
+}

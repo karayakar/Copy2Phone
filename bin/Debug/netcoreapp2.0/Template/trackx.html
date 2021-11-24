@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/pouchdb.min.js"></script>
+    <script src="js/pouchdb.find.min.js"></script>
+    <script src="js/goldenlayout.min.js"></script>
+    <link href="css/goldenlayout-base.css" rel="stylesheet" />
+    <link href="css/goldenlayout-dark-theme.css" rel="stylesheet" />
+
+    
+    <script>
+        var db = new PouchDB('finance');
+
+        //db.put({
+        //    _id: 'mydoc',
+        //    title: 'Heroes'
+        //}).then(function (response) {
+        //    // handle response
+        //}).catch(function (err) {
+        //    console.log(err);
+        //});
+
+        //autoId
+        //db.post({
+        //    title: 'Ziggy Stardust'
+        //}).then(function (response) {
+        //    // handle response
+        //}).catch(function (err) {
+        //    console.log(err);
+        //});
+
+        //db.get('mydoc').then(function (doc) {
+        //    // handle doc
+        //}).catch(function (err) {
+        //    console.log(err);
+        //});
+
+        //db.find({
+        //    selector: { name: 'Mario' },
+        //    fields: ['_id', 'name'],
+        //    sort: ['name']
+        //}).then(function (result) {
+        //    // handle result
+        //}).catch(function (err) {
+        //    console.log(err);
+        //});
+    </script>
+
+    <script>
+        var symbols = ['bcnbtc', 'eosbtc', 'lunbtc', 'zecbtc', 'trxbtc', 'ethbtc', 'xrpbtc', 'neobtc', 'stormbtc', 'wavesbtc', 'rlcbtc', 'icxbtc'];
+
+        var socket = null;
+        var scheme = document.location.protocol == "https:" ? "wss" : "ws";
+        var port = document.location.port ? (":" + document.location.port) : "";
+        var dynavar = 0;
+        var socketStat = null;
+
+        var dynamicHub = 'ticker' + dynavar;
+        var connectionUrl = scheme + "://" + document.location.hostname + port + "/hub/";
+
+        function newHub() {
+            dynavar++;
+            dynamicHub = 'ticker' + dynavar;
+            return dynamicHub;
+        }
+
+        function SocketHandler(url, hub) {
+
+            socket = new WebSocket(url + hub);
+            socket.onopen = function (event) {
+                socketStat = 'OPEN'
+            };
+            socket.onclose = function (event) {
+                socketStat = 'CLOSE'
+                SocketHandler(uconnectionUrlrl, newHub());
+            };
+            socket.onerror = function (event) {
+                socketStat = 'CLOSE'
+                SocketHandler(connectionUrl, newHub());
+            };
+            socket.onmessage = function (event) {
+                socketStat = 'ACTIVE'
+                var data = event.data;
+
+            };
+        }
+
+
+        function receiver(a) {
+
+            db.post(JSON.parse(a)).then(function (response) {
+                // handle response
+                // console.log(response);
+                // debugger;
+            }).catch(function (err) {
+                console.log(err);
+                // debugger;
+            });
+            $('#activity').val(a);
+            if (!socket || socket.readyState != WebSocket.OPEN && WebSocket.CONNECTING) {
+                //alert("socket not connected");
+                // SocketHandler(connectionUrl, newHub());
+            } else {
+                // console.log(a);
+
+                socket.send(a);
+            }
+
+        }
+    </script>
+</head>
+
+<body>
+    <input type="text" value="" id="symbolbox" style="width:90%;" /> <button type="button" value="start" id="startBtn">Start</button><br />
+    <input type="text" value="" id="activity" style="width:90%;" readonly disabled />
+  
+
+    <div style="width:100%;" id="frames"></div>
+  
+
+    
+
+    <script>
+        var symbolboxVal = '';
+        for (var i = 0; i < symbols.length; i++) {
+            symbolboxVal += symbols[i] + ',';
+
+        };
+        $('#symbolbox').val(symbolboxVal);
+
+
+        //layout
+        //goldenlayout
+        var config = {
+            content: [
+                {
+                type: 'row',
+                content: [
+                    //{
+                    //type: 'component',
+                    //title: 'Stocks',
+                    //tooltip: 'Stocks',
+                    //componentName: 'testComponent',
+                    //componentState: { label: 'A' }
+                    //}
+                    //,
+                    //{
+                    //type: 'column',
+                    //content: [{
+                    //    type: 'component',
+                    //    componentName: 'testComponent',
+                    //    componentState: { label: 'B' }
+                    //}]
+                    //}
+                ]
+                }
+            ]
+        };
+
+        function addNewChild(_title, _html) {
+            var child = getNewChild(_title, _html);
+            if (myLayout.root && myLayout.root.contentItems) {
+
+                if (myLayout.root.contentItems.length == 0) {
+                    //myLayout.root.contentItems.push(child);
+                }  
+
+                if (myLayout.root.contentItems.length > 0) {
+                    myLayout.root.contentItems[0].addChild(child);
+                }  
+            }
+           
+
+        }
+
+        function getNewChild(_title,_html) {
+         var newItemConfig = {
+            title: _title,
+            type: 'component',
+             componentName: 'testComponent',
+            componentState: { html: _html }
+            };
+            return newItemConfig;
+        }
+
+        var myLayout = new GoldenLayout(config);
+        myLayout.registerComponent('testComponent', function (container, componentState) {
+            container.getElement().html( componentState.html );
+        });
+        myLayout.init();
+
+
+        $(document).ready(function () {
+
+            $('#startBtn').on('click', function () {
+                $('#frames').html('');
+                var symbolboxVal = $('#symbolbox').val();
+                symbols = symbolboxVal.split(',');
+                for (var i = 0; i < symbols.length - 1; i++) {
+                    if (symbols[i] && symbols[i] != "") {
+                        var url = 'binancex.html?sym=' + symbols[i];
+                        var temp = '<iframe class="stockFrame" src="' + url + '"></iframe>';
+                        addNewChild(symbols[i], temp);
+                       
+                       
+                        //$('#frames').append('<iframe width="200" height="200" src="' + url + '"></iframe>');
+                    };
+                };
+                $('.stockFrame').css({ "width":"100%","height":"100%","border":"0px"});
+
+
+                //  SocketHandler(connectionUrl, newHub());
+
+
+            });
+        });
+    </script>
+    <script>
+       
+      
+
+
+
+      
+
+        //element.click(function () {
+        //    myLayout.root.contentItems[0].addChild(newItemConfig);
+        //});
+    </script>
+  
+
+
+</body>
+</html>

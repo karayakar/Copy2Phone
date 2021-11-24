@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>AKAIS BOT debug</title>
+    <!-- Bootstrap Core CSS -->
+    <link href="Assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- MetisMenu CSS -->
+    <link href="Assets/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="Assets/dist/css/sb-admin-2.css" rel="stylesheet">
+    <!-- Custom Fonts -->
+    <link href="Assets/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <!-- jQuery -->
+    <script src="Assets/vendor/jquery/jquery.min.js"></script>
+    <!-- Bootstrap Core JavaScript -->
+    <script src="Assets/vendor/bootstrap/js/bootstrap.min.js"></script>
+    <!-- Metis Menu Plugin JavaScript -->
+    <script src="Assets/vendor/metisMenu/metisMenu.min.js"></script>
+    <!-- Custom Theme JavaScript -->
+    <script src="Assets/dist/js/sb-admin-2.js"></script>
+    <script src="js/lodash.js"></script>
+    <script src="Assets/js/fuzzy.js"></script>
+    <script src="js/axios.js"></script>
+    <link href="css/jsoneditor.min.css" rel="stylesheet" />
+    <script src="js/jsoneditor.min.js"></script>
+    <!--<script src="Assets/js/jquery.js"></script>-->
+    <script>
+        function check(inputSentence, arrayDictionary) {
+            if (!arrayDictionary) {
+                arrayDictionary = ["how are you", "how", "are", "you"];
+            }
+            FuzzySet().useLevenshtein = true;
+            FuzzySet().lower = 3;
+            FuzzySet().upper = 6;
+            FuzzySet().min_match_score = 0.33;
+            var result = FuzzySet(arrayDictionary);
+            return result.get(inputSentence);
+        }
+
+    </script>
+    <script>
+        function inputSentence(input) {
+            debugger;
+            input = cleanStr(input);
+            var wordArray = input.split(' ');
+            var inputdict = input.replace(/ /g, '\r\n');
+            console.log(input);
+            console.log(wordArray);
+            console.log(inputdict);
+            var resultWhole = check(input);
+            var unknownWords = wordArray;
+            var knownWords = [];
+            console.log(resultWhole);
+            for (var i = 0; i < wordArray.length; i++) {
+                var result = check(wordArray[i]);
+
+                if (result) {
+                    knownWords.push({ Score: result[0][0], Word: result[0][1] });
+                    for (var j = 0; j < unknownWords.length - 1; j++) {
+                        if (unknownWords[j] === result[0][1]) {
+                            unknownWords.splice(j, 1);
+                        }
+                    }
+
+                }
+            }
+            console.log('unknown words');
+            console.log(unknownWords);
+            console.log('known words');
+            console.log(knownWords);
+            console.log('best possibility');
+            console.log(resultWhole);
+        }
+
+        function cleanStr(s) {
+            s = s.replace(/[&\/\\#+()$~%'"*<>{}]/g, '');
+            s = s.replace(/[;:,.?]/g, ' ');
+            return s;
+        }
+
+
+        var conversation = [{
+            botid: "",
+            activity: "",
+            step: 0,
+            conversation: {
+                inputTerm: "",
+                paramaters: ["", ""],
+                responsePrefix: "",
+                responseText: "",
+                responseHtml: "",
+                responseSuffix: "",
+                responseScript: "",
+                ApiResponse: {
+                    Url: "",
+                    method: "",
+                    headers: [{ "": "" }],
+                    payload: "",
+                    authentication: {
+                        type: "",
+                        credentials: { "": "" }
+                    },
+                    callActivity: { activityName: "", step: 0 }
+                },
+                errormessage: { message: "", speak: true, details: "" }
+            }
+        }];
+
+
+        function dataObj(expression, step, name, botid) {
+            var dataObject = {
+                Expression: expression,
+                Step: step,
+                Name: name,
+                BotId: botid
+            };
+            return dataObject;
+        }
+
+        //variables
+        var activeInput = {};
+
+        function getConversationState(botid, activity, step) {
+
+            _.find(conversation, function (o) {
+                return o.botid === botid && o.activity === activity && o.step === step;
+            });
+
+            _.find(conversation, function (o) {
+                return o.botid === botid && o.activity === activity;
+            });
+
+            _.find(conversation, function (o) {
+                return o.botid === botid;
+            });
+
+        }
+
+        function runtest(callback, input) {
+            var dataInput = dataObj();
+            var botid = 0;
+            var exp = '';
+            var step = 0;
+            var activity = "";
+            try {
+                dataInput = JSON.parse(input);
+                if (dataInput && dataInput.BotId) {
+                    botid = dataInput.BotId;
+                }
+                if (dataInput && dataInput.Expression) {
+                    exp = dataInput.Expression;
+                }
+                if (dataInput && dataInput.Step) {
+                    step = dataInput.Step;
+                }
+                if (dataInput && dataInput.Name) {
+                    activity = dataInput.Name;
+                }
+            } catch (e) {
+                exp = '';
+                dataInput = '';
+                activity = '';
+                callback(null, "I am having trouble to process, I can't help with that right now.");
+            }
+
+            var conversationState = getConversationState(botid, activity, step);
+            if (conversationState) {
+                callback(null, conversationState.responseText);
+            } else {
+                callback(null, "Error in conversation. I can't find conversation state.");
+            }
+
+        }
+
+    </script>
+</head>
+<body>
+    <div id="wrapper">
+        <!-- Navigation -->
+        <nav class="navbar navbar-default navbar-static-top" role="navigation" style="margin-bottom: 0">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="index.html">AKAIS BOT Debug</a>
+            </div>
+
+            <div class="navbar-default sidebar" role="navigation">
+                <div class="sidebar-nav navbar-collapse">
+                    <ul class="nav" id="side-menu"></ul>
+                </div>
+                <!-- /.sidebar-collapse -->
+            </div>
+            <!-- /.navbar-static-side -->
+        </nav>
+        <div id="page-wrapper">
+            <div class="row">
+                <div class="col-lg-12">
+                    <h1 class="page-header">Debug</h1>
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            bot debugging
+                        </div>
+                        <div class="panel-body">
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <form role="form">
+                                        <div class="form-group">
+                                            <label>Text area</label>
+                                            <textarea id="inputscript" name="inputscript" class="form-control" rows="17"></textarea>
+                                            <div id="jsoneditor" style="width: 100%; height: 600px;"></div>
+
+                                            <script>
+                                                // create the editor
+                                                var container = document.getElementById("jsoneditor");
+                                                var options = {};
+                                                var editor = new JSONEditor(container, options);
+
+                                                // set json
+
+                                            </script>
+                                        </div>
+                                        <!--<button type="button" id="evaluate" class="btn btn-default">Evaluate</button>-->
+                                        <script>
+                                            $('#evaluate').on('click', function () {
+                                                eval($("#inputscript").val());
+
+                                            })
+                                        </script>
+                                        <div class="form-group">
+                                            <label>upload Config</label>
+                                            <input type="file" id="fileupload">
+                                        </div>
+
+                                        <button type="button" id="upload" class="btn btn-default">Upload</button>
+
+                                        <button type="button" id="getsample" class="btn btn-default">Download</button>
+                                        <button type="button" id="savethis" class="btn btn-default">Save changes</button>
+
+                                        <script>
+                                            $('#savethis').on('click', function () {
+
+                                                var botid = $("#inputbotid").val();
+
+                                                if (botid != 'generic') {
+                                                    var s = JSON.stringify(editor.get());
+                                                    var filename = botid + '.json';
+                                                    var formData = new FormData();
+                                                    formData.append('file', new File([new Blob([s])], filename));
+                                                    // formData.append('another-form-field', 'some value');
+
+                                                    var jqxhr = $.ajax({
+                                                        url: "api/nodejs/upload",
+                                                        type: "POST",
+                                                        contentType: false,
+                                                        data: formData,
+
+                                                        cache: false,
+                                                        processData: false,
+                                                        async: false,
+                                                        xhr: function () {
+                                                            var xhr = new window.XMLHttpRequest();
+                                                            xhr.upload.addEventListener("progress",
+                                                                function (evt) {
+                                                                    if (evt.lengthComputable) {
+                                                                        var progress = Math.round((evt.loaded / evt.total) * 100);
+
+                                                                        // Do something with the progress
+                                                                    }
+                                                                },
+                                                                false);
+                                                            return xhr;
+                                                        }
+                                                    })
+                                                        .done(function (data, textStatus, jqXhr) {
+                                                            alert("Uploading is done");
+
+                                                            // Clear the input
+                                                            $("#files").val();
+                                                        })
+                                                        .fail(function (jqXhr, textStatus, errorThrown) {
+                                                            if (errorThrown === "abort") {
+                                                                alert("Uploading was aborted");
+                                                            } else {
+                                                                alert("Uploading failed");
+                                                            }
+                                                        })
+                                                        .always(function (data, textStatus, jqXhr) { });
+
+                                                } else {
+                                                    alert('you can not update generic botid');
+                                                }
+
+                                            });
+                                            $('#getsample').on('click', function () {
+                                                var botid = $("#inputbotid").val();
+                                                if (botid) {
+                                                    $.ajax({
+                                                        url: "api/nodejs/getbotconfig?botid=" + botid,
+                                                        async: false,
+                                                        success: function (data) {
+                                                            $('#inputscript').val(data);
+                                                            var json = JSON.parse(data);
+                                                            editor.set(json);
+
+                                                            // get json
+                                                            var json = editor.get();
+                                                        }
+                                                    });
+                                                } else {
+                                                    alert('please specify botid');
+                                                }
+
+                                            });
+
+                                            $('#upload').on('click', function () {
+                                                uploadFile('#fileupload');
+                                            });
+
+
+                                            function uploadFile(inputId) {
+
+                                                var file1 = $(inputId)[0].files[0];
+                                                var formData = new FormData();
+                                                formData.append("files", file1);
+                                                // You can abort the upload by calling jqxhr.abort();
+                                                var jqxhr = $.ajax({
+                                                    url: "api/nodejs/upload",
+                                                    type: "POST",
+                                                    contentType: false,
+                                                    data: formData,
+
+                                                    cache: false,
+                                                    processData: false,
+                                                    async: false,
+                                                    xhr: function () {
+                                                        var xhr = new window.XMLHttpRequest();
+                                                        xhr.upload.addEventListener("progress",
+                                                            function (evt) {
+                                                                if (evt.lengthComputable) {
+                                                                    var progress = Math.round((evt.loaded / evt.total) * 100);
+
+                                                                    // Do something with the progress
+                                                                }
+                                                            },
+                                                            false);
+                                                        return xhr;
+                                                    }
+                                                })
+                                                    .done(function (data, textStatus, jqXhr) {
+                                                        alert("Uploading is done");
+
+                                                        // Clear the input
+                                                        $("#files").val();
+                                                    })
+                                                    .fail(function (jqXhr, textStatus, errorThrown) {
+                                                        if (errorThrown === "abort") {
+                                                            alert("Uploading was aborted");
+                                                        } else {
+                                                            alert("Uploading failed");
+                                                        }
+                                                    })
+                                                    .always(function (data, textStatus, jqXhr) { });
+
+                                            }
+                                        </script>
+                                    </form>
+                                </div>
+                                <div class="col-lg-6">
+                                    <form role="form">
+
+                                        <div class="form-group">
+                                            <label>BotId</label>
+                                            <input name="botid" id="inputbotid" class="form-control">
+                                            <p class="help-block">Example botid.</p>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Activity Name</label>
+                                            <input name="inputactivityname" id="inputactivityname" class="form-control">
+                                            <p class="help-block">Example Activity name.</p>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Step</label>
+                                            <input name="inputstep" id="inputstep" class="form-control">
+                                            <p class="help-block">Example Step.</p>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Expression</label>
+                                            <input name="inputexpression" id="inputexpression" class="form-control">
+                                            <p class="help-block">Example expression (Received input).</p>
+                                        </div>
+
+
+                                        <button type="button" id="creteinput" class="btn btn-default">Set</button>
+
+                                        <script>
+
+                                            $('#creteinput').on('click', function () {
+                                                var id = $('#inputbotid').val();
+                                                var activity = $('#inputactivityname').val();;
+                                                var step = $('#inputstep').val();;
+                                                var expression = $('#inputexpression').val();;
+                                                activeInput = dataObj(expression, step, activity, id);
+                                                var sout = JSON.stringify(activeInput);
+                                                outscript(sout);
+                                            });
+
+
+                                        </script>
+                                    </form>
+
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <form role="form">
+
+                                        <div class="form-group">
+                                            <label>Output</label>
+                                            <textarea id="outscript" name="outscript" class="form-control" rows="17"></textarea>
+                                        </div>
+
+                                    </form>
+                                </div>
+                                <script>
+                                    function outscript(input) {
+                                        $("#outscript").val($("#outscript").val() + '\r\n' + input);
+                                    }
+
+                                </script>
+                            </div>
+                            <!-- /.row (nested) -->
+                        </div>
+                        <!-- /.panel-body -->
+                    </div>
+                    <!-- /.panel -->
+                </div>
+                <!-- /.col-lg-12 -->
+            </div>
+            <!-- /.row -->
+        </div>
+        <!-- /#page-wrapper -->
+    </div>
+    <!-- /#wrapper -->
+
+
+</body>
+</html>

@@ -1,0 +1,2 @@
+﻿var webResponseModel = { "Url": null, "Method": 0, "Headers": null, "Body": null, "SavedName": null, "WebResponse": { "View": { "Type": 0, "Value": null, "Version": null, "Cache": false }, "Model": { "Type": 0, "Value": null, "Version": null, "Cache": false }, "Data": { "Type": 0, "Value": null, "Version": null, "Cache": false }, "RenderSection": { "SectionId": null, "SectionName": null, "ExecuteScript": null }, "Load": [] } };
+var loadModel = { "Type": null, "Data": null, "Order": 0 };

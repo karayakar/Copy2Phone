@@ -1,0 +1,1030 @@
+﻿
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Binance Tracker @ Karay Akar</title>
+    <script src="js/handlebars.js"></script>
+    <script src="js/jquery.min.js"></script>
+    <!--<script src="js/Observe.js"></script>-->
+    <script src="js/pouchdb.min.js"></script>
+    <script src="js/pouchdb.find.min.js"></script>
+    <script src="js/watch.js"></script>
+
+    <script src="js/moment.min.js"></script>
+    <script src="js/Chart.js"></script>
+
+    <script src="js/utils.js"></script>
+    <script src="js/graph.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+        }
+
+        table {
+            padding: 5px;
+        }
+
+        .price {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .details {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 10px;
+            font-weight: normal;
+            display: inline-block;
+        }
+
+        .red {
+            color: red;
+        }
+
+        .green {
+            color: green
+        }
+
+        .gray {
+            color: gray
+        }
+    </style>
+</head>
+<body style="overflow-dd:hidden">
+
+
+    <script id="tickerDiv-template" type="text/x-handlebars-template">
+        <div class="ticker">
+
+            <div class="price {{c.class}}">
+                <b class="price {{c.class}}"><img src="{{icon}}" height="16"> {{s.value}} | <b>Vol</b>:{{{toFixed q.value 2}}} |  %{{P.value}}</b> | ${{usdPrice}} | {{c.value}}
+                <br />
+
+                <div style="font-size:9px;font-weight:normal">
+                    Name: {{selectedCoin.n}} | Transaction Fee: {{selectedCoin.k}} | Min Withdrawal: {{selectedCoin.w}}
+                    <br /> Trading Fee: 0.1% ${{actualTF}} | Real Transaction Cost: $ {{reelTF}}
+                </div>
+
+            </div>
+            <div class="details" style="displayx:none;">
+                <b>{{v.name}}</b>:{{{toFixed v.value 2}}}<br />
+
+                <b>{{w.name}}</b>:{{w.value}}<br />
+                <b>{{x.name}}</b>:{{x.value}}<br />
+                <b>{{b.name}}</b>:{{b.value}}<br />
+                <b>{{B.name}}</b>:{{B.value}}<br />
+                <b>{{a.name}}</b>:{{a.value}}<br />
+                <b>{{A.name}}</b>:{{A.value}}<br />
+                <b>{{n.name}}</b>:{{n.value}}<br />
+            </div>
+
+        </div>
+    </script>
+    <script id="tickerDivPrice-template" type="text/x-handlebars-template">
+        <div class="ticker" style="display: inline-flex;">
+
+
+            <div class="details green">
+                <b class="price green">{{vbt}}</b><br />
+                <div style="display:none;">
+                    {{#each b as |item|}}
+                    {{#if (lt @index "30") }}
+                    <br>{{@index}} {{item.price}}: {{item.vcount}}
+                    {{/if }}
+
+                    {{/each}}
+                </div>
+            </div>
+            <div class="details red">
+                <b class="price red">{{vat}}</b><br />
+                <div style="display:none;">
+                    {{#each a as |item|}}
+                    {{#if (lt @index "30") }}
+                    <br>{{@index}} {{item.price}}: {{item.vcount}}
+                    {{/if }}
+
+                    {{/each}}
+                </div>
+            </div>
+
+
+        </div>
+
+
+    </script>
+    <script id="tickerDivTrade-template" type="text/x-handlebars-template">
+        <table width="400">
+
+            <tr>
+
+                <td>
+                    {{trader.tradeStartAmount}} = $ {{curUSD}} Com: {{ComUSD}} Net:<b>{{netUSD}}</b>
+
+                </td>
+
+            </tr>
+            <tr>
+
+                <td>
+                    {{trader.tradeStartAmount}} = BTC: {{curBTC}} Com: {{ComBTC}} Net:<b>{{netBTC}}</b>
+
+                </td>
+
+            </tr>
+            <tr>
+                <td>
+                    <table>
+                        <tr>
+                            <td>TIME</td>
+                            <td>BUY</td>
+                            <td>SELL</td>
+                            <td>COMM</td>
+                            <td>PROFIT/LOSS</td>
+                        </tr>
+                        {{#each trades.transactions as |item|}}
+                        <tr>
+                            <td>{{item.time}}</td>
+                            <td style="color:green">{{item.buyPriceUSD}}</td>
+                            <td style="color:red">{{item.sellPriceUSD}}</td>
+                            <td>{{item.commissionCostUSD}}</td>
+                            <td>{{item.profit}}</td>
+                        </tr>
+                        {{/each }}
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </script>
+
+    <div style="display:inline-block">
+        <select class="coin-select">
+            <option value="">Coin</option>
+            <option value="ADA" data-icon="https://ex.bnbstatic.com/file/resources/img/20171130/image_1512031982603.png">ADA</option>
+            <option value="ADX" data-icon="https://ex.bnbstatic.com/file/resources/img/20171009/image_1507548609168.png">ADX</option>
+            <option value="AE" data-icon="https://ex.bnbstatic.com/file/resources/img/20180207/image_1518003804150.png">AE</option>
+            <option value="AION" data-icon="https://ex.bnbstatic.com/file/resources/img/20171221/image_1513829272787.png">AION</option>
+            <option value="AMB" data-icon="https://ex.bnbstatic.com/file/resources/img/20171110/image_1510320967152.png">AMB</option>
+            <option value="APPC" data-icon="https://ex.bnbstatic.com/file/resources/img/20180105/image_1515167857981.jpg">APPC</option>
+            <option value="ARK" data-icon="https://ex.bnbstatic.com/file/resources/img/20171101/image_1509522811096.png">ARK</option>
+            <option value="ARN" data-icon="https://ex.bnbstatic.com/file/resources/img/20171114/image_1510671881822.jpg">ARN</option>
+            <option value="AST" data-icon="https://ex.bnbstatic.com/file/resources/img/20171019/image_1508384731363.png">AST</option>
+            <option value="BAT" data-icon="https://ex.bnbstatic.com/file/resources/img/20171019/image_1508391661769.png">BAT</option>
+            <option value="BCC" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205829543.png">BCC</option>
+            <option value="BCD" data-icon="https://ex.bnbstatic.com/file/resources/img/20171124/image_1511523799592.jpg">BCD</option>
+            <option value="BCN" data-icon="https://ex.bnbstatic.com/file/resources/img/20180508/image_1525747900979.png">BCN</option>
+            <option value="BCPT" data-icon="https://ex.bnbstatic.com/file/resources/img/20171114/image_1510648118020.png">BCPT</option>
+            <option value="BCX" data-icon="https://ex.bnbstatic.com/file/resources/img/20180322/image_1521714878838.png">BCX</option>
+            <option value="BLZ" data-icon="https://ex.bnbstatic.com/file/resources/img/20180207/image_1517986673584.png">BLZ</option>
+            <option value="BNB" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205843840.png">BNB</option>
+            <option value="BNT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205856201.png">BNT</option>
+            <option value="BQX" data-icon="https://ex.bnbstatic.com/file/resources/img/20171121/image_1511241921766.png">BQX</option>
+            <option value="BRD" data-icon="https://ex.bnbstatic.com/file/resources/img/20171221/image_1513841739932.jpg">BRD</option>
+            <option value="BTC" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205865716.png">BTC</option>
+            <option value="BTG" data-icon="https://ex.bnbstatic.com/file/resources/img/20171024/image_1508826709624.png">BTG</option>
+            <option value="BTM" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205875875.png">BTM</option>
+            <option value="BTS" data-icon="https://ex.bnbstatic.com/file/resources/img/20171117/image_1510907797544.png">BTS</option>
+            <option value="CDT" data-icon="https://ex.bnbstatic.com/file/resources/img/20180309/image_1520578603190.png">CDT</option>
+            <option value="CHAT" data-icon="https://ex.bnbstatic.com/file/resources/img/20180131/image_1517393276792.png">CHAT</option>
+            <option value="CLOAK" data-icon="https://ex.bnbstatic.com/file/resources/img/20180418/image_1524032518841.png">CLOAK</option>
+            <option value="CMT" data-icon="https://ex.bnbstatic.com/file/resources/img/20171208/image_1512738585293.png">CMT</option>
+            <option value="CND" data-icon="https://ex.bnbstatic.com/file/resources/img/20171114/image_1510648594048.png">CND</option>
+
+            <option value="CTR" data-icon="https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667451124.png">CTR</option>
+            <option value="CVC" data-icon="https://ex.bnbstatic.com/file/resources/img/20170929/image_1506663234460.png">CVC</option>
+            <option value="DASH" data-icon="https://ex.bnbstatic.com/file/resources/img/20171019/image_1508403867407.png">DASH</option>
+            <option value="DGD" data-icon="https://ex.bnbstatic.com/file/resources/img/20171019/image_1508391643074.png">DGD</option>
+            <option value="DLT" data-icon="https://ex.bnbstatic.com/file/resources/img/20171109/image_1510215877697.png">DLT</option>
+            <option value="DNT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205888589.png">DNT</option>
+            <option value="EDO" data-icon="https://ex.bnbstatic.com/file/resources/img/20171108/image_1510106214200.png">EDO</option>
+            <option value="ELF" data-icon="https://ex.bnbstatic.com/file/resources/img/20171222/image_1513958378896.png">ELF</option>
+            <option value="ENG" data-icon="https://ex.bnbstatic.com/file/resources/img/20171025/image_1508914582957.png">ENG</option>
+            <option value="ENJ" data-icon="https://ex.bnbstatic.com/file/resources/img/20171101/image_1509520130798.png">ENJ</option>
+            <option value="EOS" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205906277.png">EOS</option>
+            <option value="ETC" data-icon="https://ex.bnbstatic.com/file/resources/img/20171011/image_1507706991862.png">ETC</option>
+            <option value="ETF" data-icon="https://ex.bnbstatic.com">ETF</option>
+            <option value="ETH" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205918473.png">ETH</option>
+            <option value="EVX" data-icon="https://ex.bnbstatic.com/file/resources/img/20171026/image_1509023050245.png">EVX</option>
+            <option value="FUEL" data-icon="https://ex.bnbstatic.com/file/resources/img/20171117/image_1510908227868.png">FUEL</option>
+            <option value="FUN" data-icon="https://ex.bnbstatic.com/file/resources/img/20170922/image_1506059490806.png">FUN</option>
+            <option value="GAS" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205927020.png">GAS</option>
+            <option value="GNT" data-icon="https://ex.bnbstatic.com/file/resources/img/20171019/image_1508391540195.png">GNT</option>
+            <option value="GRS" data-icon="https://ex.bnbstatic.com/file/resources/img/20180404/image_1522832531039.png">GRS</option>
+            <option value="GTO" data-icon="https://ex.bnbstatic.com/file/resources/img/20171218/image_1513583310766.png">GTO</option>
+            <option value="GVT" data-icon="https://ex.bnbstatic.com/file/resources/img/20171116/image_1510824071655.png">GVT</option>
+            <option value="GXS" data-icon="https://ex.bnbstatic.com/file/resources/img/20171110/image_1510306370952.png">GXS</option>
+            <option value="HCC" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205938291.png">HCC</option>
+            <option value="HSR" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205949558.png">HSR</option>
+            <option value="ICN" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205963648.png">ICN</option>
+            <option value="ICX" data-icon="https://ex.bnbstatic.com/file/resources/img/20171218/image_1513572940018.png">ICX</option>
+            <option value="INS" data-icon="https://ex.bnbstatic.com/file/resources/img/20180115/image_1515997634519.png">INS</option>
+            <option value="IOST" data-icon="https://ex.bnbstatic.com/file/resources/img/20180124/image_1516772742823.png">IOST</option>
+            <option value="IOTA" data-icon="https://ex.bnbstatic.com/file/resources/img/20171025/image_1508914676824.png">IOTA</option>
+            <option value="IOTX" data-icon="https://ex.bnbstatic.com/file/resources/img/20180601/image_1527828851821.jpg">IOTX</option>
+            <option value="KMD" data-icon="https://ex.bnbstatic.com/file/resources/img/20180308/image_1520502422345.jpg">KMD</option>
+            <option value="KNC" data-icon="https://ex.bnbstatic.com/file/resources/img/20170925/image_1506303943009.png">KNC</option>
+            <option value="LEND" data-icon="https://ex.bnbstatic.com/file/resources/img/20171201/image_1512124243653.png">LEND</option>
+            <option value="LINK" data-icon="https://ex.bnbstatic.com/file/resources/img/20170928/image_1506580886609.png">LINK</option>
+            <option value="LLT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205975503.png">LLT</option>
+            <option value="LOOM" data-icon="https://ex.bnbstatic.com/file/resources/img/20180502/image_1525241908783.png">LOOM</option>
+            <option value="LRC" data-icon="https://ex.bnbstatic.com/file/resources/img/20171120/image_1511158249148.png">LRC</option>
+            <option value="LSK" data-icon="https://ex.bnbstatic.com/file/resources/img/20171122/image_1511321260299.png">LSK</option>
+            <option value="LTC" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205996222.png">LTC</option>
+            <option value="LUN" data-icon="https://ex.bnbstatic.com/file/resources/img/20171229/image_1514527049798.png">LUN</option>
+            <option value="MANA" data-icon="https://ex.bnbstatic.com/file/resources/img/20171109/image_1510216206256.png">MANA</option>
+            <option value="MCO" data-icon="https://ex.bnbstatic.com/file/resources/img/20180426/image_1524719677974.png">MCO</option>
+            <option value="MDA" data-icon="https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667555189.png">MDA</option>
+            <option value="MOD" data-icon="https://ex.bnbstatic.com/file/resources/img/20171102/image_1509625627340.png">MOD</option>
+            <option value="MTH" data-icon="https://ex.bnbstatic.com/file/resources/img/20171009/image_1507548356971.png">MTH</option>
+            <option value="MTL" data-icon="https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667633982.png">MTL</option>
+            <option value="NANO" data-icon="https://ex.bnbstatic.com/file/resources/img/20180202/image_1517565888589.png">NANO</option>
+            <option value="NAV" data-icon="https://ex.bnbstatic.com/file/resources/img/20171227/image_1514364698462.png">NAV</option>
+            <option value="NCASH" data-icon="https://ex.bnbstatic.com/file/resources/img/20180228/image_1519800274250.png">NCASH</option>
+            <option value="NEBL" data-icon="https://ex.bnbstatic.com/file/resources/img/20171222/image_1513913163140.png">NEBL</option>
+            <option value="NEO" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206017412.png">NEO</option>
+            <option value="NULS" data-icon="https://ex.bnbstatic.com/file/resources/img/20171108/image_1510110758483.png">NULS</option>
+            <option value="OAX" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206029978.png">OAX</option>
+            <option value="OMG" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206038128.png">OMG</option>
+            <option value="ONT" data-icon="https://ex.bnbstatic.com/file/resources/img/20180306/image_1520315898087.jpg">ONT</option>
+            <option value="OST" data-icon="https://ex.bnbstatic.com/file/resources/img/20180323/image_1521771657067.png">OST</option>
+            <option value="PIVX" data-icon="https://ex.bnbstatic.com/file/resources/img/20180123/image_1516677190423.png">PIVX</option>
+            <option value="POA" data-icon="https://ex.bnbstatic.com/file/resources/img/20180228/image_1519800408882.png">POA</option>
+            <option value="POE" data-icon="https://ex.bnbstatic.com/file/resources/img/20171116/image_1510824136094.png">POE</option>
+            <option value="POWR" data-icon="https://ex.bnbstatic.com/file/resources/img/20171106/image_1509981524302.jpg">POWR</option>
+            <option value="PPT" data-icon="https://ex.bnbstatic.com/file/resources/img/20171109/image_1510216326112.png">PPT</option>
+            <option value="QKC" data-icon="https://ex.bnbstatic.com/file/resources/img/20180604/image_1528092041671.png">QKC</option>
+            <option value="QLC" data-icon="https://ex.bnbstatic.com/file/resources/img/20180326/image_1522053510508.png">QLC</option>
+            <option value="QSP" data-icon="https://ex.bnbstatic.com/file/resources/img/20171121/image_1511257194898.png">QSP</option>
+            <option value="QTUM" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206050748.png">QTUM</option>
+            <option value="RCN" data-icon="https://ex.bnbstatic.com/file/resources/img/20171108/image_1510106190929.png">RCN</option>
+            <option value="RDN" data-icon="https://ex.bnbstatic.com/file/resources/img/20171109/image_1510216636765.png">RDN</option>
+            <option value="REP" data-icon="https://ex.bnbstatic.com/file/resources/img/20170929/image_1506663402998.png">REP</option>
+            <option value="REQ" data-icon="https://ex.bnbstatic.com/file/resources/img/20171024/image_1508829156738.png">REQ</option>
+            <option value="RLC" data-icon="https://ex.bnbstatic.com/file/resources/img/20180112/image_1515736361825.png">RLC</option>
+            <option value="RPX" data-icon="https://ex.bnbstatic.com/file/resources/img/20180212/image_1518404945756.png">RPX</option>
+            <option value="SALT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667649220.png">SALT</option>
+            <option value="SBTC" data-icon="https://ex.bnbstatic.com/file/resources/img/20180307/image_1520392640143.png">SBTC</option>
+            <option value="SKY" data-icon="https://ex.bnbstatic.com/file/resources/img/20180523/image_1527069736170.png">SKY</option>
+            <option value="SNGLS" data-icon="https://ex.bnbstatic.com/file/resources/img/20170913/image_1505271817831.png">SNGLS</option>
+            <option value="SNM" data-icon="https://ex.bnbstatic.com/file/resources/img/20170927/image_1506483085195.png">SNM</option>
+            <option value="SNT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206059941.png">SNT</option>
+            <option value="STEEM" data-icon="https://ex.bnbstatic.com/file/resources/img/20180131/image_1517365556047.png">STEEM</option>
+            <option value="STORJ" data-icon="https://ex.bnbstatic.com/file/resources/img/20171103/image_1509677596887.png">STORJ</option>
+            <option value="STORM" data-icon="https://ex.bnbstatic.com/file/resources/img/20180515/image_1526365827394.jpg">STORM</option>
+            <option value="STRAT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505222968922.png">STRAT</option>
+            <option value="SUB" data-icon="https://ex.bnbstatic.com/file/resources/img/20171009/image_1507547247311.png">SUB</option>
+            <option value="SYS" data-icon="https://ex.bnbstatic.com/file/resources/img/20180328/image_1522224189990.png">SYS</option>
+            <option value="THETA" data-icon="https://ex.bnbstatic.com/file/resources/img/20180529/image_1527576680752.png">THETA</option>
+            <option value="TNB" data-icon="https://ex.bnbstatic.com/file/resources/img/20171128/image_1511836082341.png">TNB</option>
+            <option value="TNT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170929/image_1506663322485.png">TNT</option>
+            <option value="TRIG" data-icon="https://ex.bnbstatic.com/file/resources/img/20171229/image_1514527032454.png">TRIG</option>
+            <option value="TRX" data-icon="https://ex.bnbstatic.com/file/resources/img/20180409/image_1523238899568.jpg">TRX</option>
+            <option value="TUSD" data-icon="https://ex.bnbstatic.com/file/resources/img/20180516/image_1526456481890.png">TUSD</option>
+            <option value="USDT" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206084518.png">USDT</option>
+            <option value="VEN" data-icon="https://ex.bnbstatic.com/file/resources/img/20171031/image_1509439789085.png">VEN</option>
+            <option value="VIA" data-icon="https://ex.bnbstatic.com/file/resources/img/20180205/image_1517815991015.png">VIA</option>
+            <option value="VIB" data-icon="https://ex.bnbstatic.com/file/resources/img/20171030/image_1509348017942.png">VIB</option>
+            <option value="VIBE" data-icon="https://ex.bnbstatic.com/file/resources/img/20180110/image_1515564920486.png">VIBE</option>
+            <option value="WABI" data-icon="https://ex.bnbstatic.com/file/resources/img/20171213/image_1513135814428.png">WABI</option>
+            <option value="WAN" data-icon="https://ex.bnbstatic.com/file/resources/img/20180323/image_1521771705432.png">WAN</option>
+            <option value="WAVES" data-icon="https://ex.bnbstatic.com/file/resources/img/20180314/image_1521040766829.png">WAVES</option>
+            <option value="WINGS" data-icon="https://ex.bnbstatic.com/file/resources/img/20171226/image_1514258663277.png">WINGS</option>
+            <option value="WPR" data-icon="https://ex.bnbstatic.com/file/resources/img/20180329/image_1522303661084.png">WPR</option>
+            <option value="WTC" data-icon="https://ex.bnbstatic.com/file/resources/img/20180330/image_1522377442994.png">WTC</option>
+            <option value="XEM" data-icon="https://ex.bnbstatic.com/file/resources/img/20180320/image_1521525511648.png">XEM</option>
+            <option value="XLM" data-icon="https://ex.bnbstatic.com/file/resources/img/20171205/image_1512452892544.png">XLM</option>
+            <option value="XMR" data-icon="https://ex.bnbstatic.com/file/resources/img/20171026/image_1508995469670.png">XMR</option>
+            <option value="XRP" data-icon="https://ex.bnbstatic.com/file/resources/img/20171102/image_1509591927913.png">XRP</option>
+            <option value="XVG" data-icon="https://ex.bnbstatic.com/file/resources/img/20170922/image_1506059763733.png">XVG</option>
+            <option value="XZC" data-icon="https://ex.bnbstatic.com/file/resources/img/20171120/image_1511158732921.png">XZC</option>
+            <option value="YOYO" data-icon="https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206106804.png">YOYO</option>
+            <option value="ZEC" data-icon="https://ex.bnbstatic.com/file/resources/img/20171013/image_1507901872095.png">ZEC</option>
+            <option value="ZEN" data-icon="https://ex.bnbstatic.com/file/resources/img/20180523/image_1527043231900.png">ZEN</option>
+            <option value="ZIL" data-icon="https://ex.bnbstatic.com/file/resources/img/20180305/image_1520229394441.png">ZIL</option>
+            <option value="ZRX" data-icon="https://ex.bnbstatic.com/file/resources/img/20171025/image_1508915067776.png">ZRX</option>
+        </select>
+        <select class="market-select">
+            <option value="">Market</option>
+            <option value="btc">BTC</option>
+            <option value="bnb">BNB</option>
+            <option value="eth">ETH</option>
+            <option value="usdt">USDT</option>
+        </select>
+        <input type="button" value="Join" class="coin-join">
+    </div>
+    <br />
+    <hr />
+    <table>
+        <tr>
+            <td>
+                <div id="tickerDiv-templatehtml"></div>
+                <div id="tickerDivPrice-templatehtml"></div><br />
+
+            </td>
+
+        </tr>
+    </table>
+
+    <table>
+        <tr>
+            <td>
+                <div style="width:500px;">
+                    <canvas id="canvas"></canvas>
+                </div>
+            </td>
+            <td width="3px" style="background-color:red;"></td>
+            <td>
+                <div style="width:500px;">
+                    <canvas id="volumecanvas"></canvas>
+                </div>
+            </td>
+            <td>
+                <div style="width:500px;">
+                    <table>
+
+                        <tr>
+                            <td>Amount</td>
+                            <td><input type="number" id="purchase-amount" value="1000" /></td>
+                            <td><input type="button" value="Purchase" class="coin-purchase"><input type="button" value="Cancel" class="coin-cancel" style="display:none"></td>
+                            <td><input type="button" value="BUY" class="coin-buy" style="display:none;background-color:green"><input type="button" value="SELL" class="coin-sell" style="display:none;background-color:red"></td>
+
+                        </tr>
+                        <tr>
+                            <td>
+                                <div id="tickerDivTrade-templatehtml"></div>
+                            </td>
+                        </tr>
+
+
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+
+    <script>
+        var eventDescriptor = {
+            "e": "24hrTicker",  // Event type
+            "E": "Event time",     // Event time
+            "s": "Symbol",      // Symbol
+            "p": "Price change",      // Price change
+            "P": "Price change percent",      // Price change percent
+            "w": "Weighted average price",      // Weighted average price
+            "x": "Previous day's close price",      // Previous day's close price
+            "c": "Current day's close price",      // Current day's close price
+            "Q": "Close trade's quantity",          // Close trade's quantity
+            "b": "Best bid price",      // Best bid price
+            "B": "Best bid quantity",          // Best bid quantity
+            "a": "Best ask price",      // Best ask price
+            "A": "Best ask quantity",         // Best ask quantity
+            "o": "Open price",      // Open price
+            "h": "High price",      // High price
+            "l": "Low price",      // Low price
+            "v": "Total traded base asset volume",       // Total traded base asset volume
+            "q": "Total traded quote asset volume",          // Total traded quote asset volume
+            "O": "Statistics open time",             // Statistics open time
+            "C": "Statistics close time",      // Statistics close time
+            "F": "First trade ID",             // First trade ID
+            "L": "Last trade Id",         // Last trade Id
+            "n": "Total number of trades",          // Total number of trades
+            "usdPrice": "$"
+        };
+
+
+        var btcPrice = 0;
+        var difference = 0;
+        var differenceab = 0;
+        var at = 0;
+        var bt = 0;
+        var symbolnow = {};
+        var offers = { at: 0, a: [], bt: 0, b: [] };
+        var currentPrice = { p: 0, a: 0, b: 0 };
+        var sym = getUrlParameter('sym');
+        var marketName = getUrlParameter('m');
+        var coinName = getUrlParameter('s');
+        var coinIcon = '';
+        var selectedCoin = '';
+        var coinTransactionFee = 0;
+        var coinWithdrawalFee = 0;
+        var tradingFeePercentage = 0.001;
+        var binanceDiscount = 0.05;
+        var lastTimeStamp = 0;
+        var lastTimeStampMoment = 0;
+
+        function updateSymbol(symbol, price) {
+            if (!symbolnow[symbol]) {
+                symbolnow[symbol] = {};
+            }
+            symbolnow[symbol].curr = price;
+            if (symbolnow[symbol].prev) {
+                if (symbolnow[symbol].prev > symbolnow[symbol].curr) {
+                    symbolnow[symbol].prev = symbolnow[symbol].curr;
+                    //$('body').css({ "background-color": "#f7caca" });
+                    return "red";
+                }
+                if (symbolnow[symbol].prev < symbolnow[symbol].curr) {
+                    symbolnow[symbol].prev = symbolnow[symbol].curr;
+                    //$('body').css({ "background-color": "#a8f7e2" });
+                    return "green";
+                }
+                if (symbolnow[symbol].prev == symbolnow[symbol].curr) {
+                    symbolnow[symbol].prev = symbolnow[symbol].curr;
+                   // $('body').css({ "background-color": "#ffffff" });
+                    return "gray";
+                }
+            } else {
+                symbolnow[symbol].prev = price;
+                symbolnow[symbol].prev = symbolnow[symbol].curr;
+                return "gray";
+            }
+        }
+
+        function processMessage(msg) {
+            var obj = {};
+            for (var key in msg) {
+                obj[key] = {};
+                obj[key].name = eventDescriptor[key];
+
+                    obj[key].value = msg[key];
+
+
+            }
+
+            obj['c'].class = updateSymbol(msg['s'], msg['c']);// 'red';
+            updateChart(msg['c'], msg['b'], msg['a'], msg['v'], msg);
+            return obj;
+
+        }
+
+        function removeZeros(p) {
+            p = p.replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.').replaceAll('.0', '.');
+            p = p.replaceAll('0.', '');
+            return p;
+        }
+
+        function updatelines() {
+
+            if (window.myLine) {
+                window.myLine.update();
+
+            }
+
+            if (window.myLine2) {
+                window.myLine2.update();
+
+            }
+
+        }
+        function removeUpdatelinesPrediction() {
+            configVolume.data.labels.shift();
+            configVolume.data.datasets[0].data.shift();
+            //configVolume.data.datasets[1].data.shift();
+            configVolume.data.datasets[2].data.shift();
+            if (window.myLine2) {
+                window.myLine2.update();
+
+            }
+        }
+        function removeUpdatelines() {
+
+            config.data.labels.shift();
+           // config.data.datasets[3].data.shift();
+            config.data.datasets[2].data.shift();
+            config.data.datasets[1].data.shift();
+            config.data.datasets[0].data.shift();
+
+
+            // configVolume.data.datasets[3].data.shift();
+            if (window.myLine) {
+                window.myLine.update();
+
+            }
+
+
+        }
+
+        function updateChart(p, b, a, v, m) {
+
+            if (m['E'] > lastTimeStamp+2) {
+                lastTimeStamp = m['E'];
+                lastTimeStampMoment = moment().format(timeFormat);
+
+                p = removeZeros(p);
+                b = removeZeros(b);
+                a = removeZeros(a);
+
+                var pchange = difference;
+                if (!pchange || isNaN(pchange)) {
+                    pchange = 0;
+                }
+
+                var predictedPrice=0;
+                var ts = moment().add(30, 's').format(timeFormat);
+
+                if (predictionLog.length > 0) {
+                    var lastPrediction = predictionLog.slice(-1).pop();
+                    var pp = (( ((lastPrediction.change * 1).toFixed(2)) / ((pchange * 1).toFixed(2))));
+
+                    predictedPrice = (pp * (p * 1)).toFixed(1);
+
+                    if (((p * 1) / (predictedPrice*1)) > 10) {
+                        predictedPrice = (p * 1) + (((p*1) *1)/100).toFixed(0);
+                    }
+                    if (((p * 1) / (predictedPrice * 1)) < 0 && predictedPrice!=0) {
+                        predictedPrice = (p*1) - (((p * 1) * 1) / 100).toFixed(0);
+                    }
+                }
+
+                if (isNaN(predictedPrice) || !predictedPrice || predictedPrice == 0) {
+                    predictedPrice = p;
+                }
+
+                if (isNaN(predictedPrice) || !predictedPrice || predictedPrice == 0) {
+                    predictedPrice = p;
+                }
+
+                predictedPrice = (b * 1) + (((a * 1) - (b * 1))/2);
+                console.log('predictedPrice:' + predictedPrice +' Price:'+p);
+
+                predictionLog.push({ time: ts, change: pchange, price: p, cPrice: predictedPrice });
+
+
+                configVolume.data.labels.push(ts);
+                configVolume.data.datasets[0].data.push(a);
+                configVolume.data.datasets[1].data.push(b);
+                configVolume.data.datasets[2].data.push(predictedPrice);
+                // configVolume.data.datasets[3].data.push(b);
+
+                config.data.labels.push(lastTimeStampMoment);
+                // config.data.datasets[3].data.push(pchange.toFixed(1));
+                config.data.datasets[2].data.push(p);
+                config.data.datasets[1].data.push(b);
+                config.data.datasets[0].data.push(a);
+
+
+
+
+
+                if (config.data.labels.length > 120) {
+
+                    removeUpdatelines();
+
+                }
+                if (config.data.labels.length > 30) {
+                    removeUpdatelinesPrediction();
+
+                }
+                updatelines();
+            }
+        }
+
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        };
+
+        const numberWithCommas = (x) => {
+            var parts = x.toString().split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return parts.join(".");
+        }
+
+        function financial(x) {
+            return numberWithCommas(Number.parseFloat(x).toFixed(0));
+        }
+
+        function sortProperties(obj, sortedBy, isNumericSort, reverse) {
+            sortedBy = sortedBy || 1; // by default first key
+            isNumericSort = isNumericSort || false; // by default text sort
+            reverse = reverse || false; // by default no reverse
+
+            var reversed = (reverse) ? -1 : 1;
+
+            var sortable = [];
+            for (var key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    sortable.push([key, obj[key]]);
+                }
+            }
+            if (isNumericSort)
+                sortable.sort(function (a, b) {
+                    return reversed * (a[1][sortedBy] - b[1][sortedBy]);
+                });
+            else
+                sortable.sort(function (a, b) {
+                    var x = a[1][sortedBy].toLowerCase(),
+                        y = b[1][sortedBy].toLowerCase();
+                    return x < y ? reversed * -1 : x > y ? reversed : 0;
+                });
+            return sortable; // array in format [ [ key1, val1 ], [ key2, val2 ], ... ]
+        }
+
+        function eventCalculator(e) {
+
+            if (e.data.a) {
+                //buyer
+                var d = e.data.a;
+                var t = 0;
+                for (var i = 0; i < d.length; i++) {
+                    if (d[i] && d[i][0] && currentPrice.p != 0 && (removeZeros(d[i][0]) * 1) <= ((removeZeros(currentPrice.p) * 1) - 5)) {
+
+                        var p = d[i][0];
+                        var q = d[i][1];
+                        var obj = offers.a.find(function (obj) { return obj.price === p; });
+                        if (obj) {
+                            obj.count = (obj.count * 1) + (q * 1);
+                            obj.vcount = financial(obj.count);
+                            t = t + (q * 1);
+                        } else {
+                            offers.a.push({ price: p, count: q, vcount: financial(q) });
+                            t = t + (q * 1);
+                        }
+                    }
+                }
+                if (t != 0) {
+                    offers.at = (offers.at * 1) + (t * 1);
+                    at = offers.at;
+                    offers.vat = financial(offers.at);
+                }
+
+            }
+            if (e.data.b) {
+                //seller
+                var d = e.data.b;
+                var t = 0;
+                for (var i = 0; i < d.length; i++) {
+                    if (d[i] && d[i][0] && currentPrice.p != 0 && (removeZeros(d[i][0]) * 1) >= ((removeZeros(currentPrice.p) * 1) + 5)) {
+
+                        var p = d[i][0];
+                        var q = d[i][1];
+                        var obj = offers.b.find(function (obj) { return obj.price === p; });
+                        if (obj) {
+                            obj.count = (obj.count * 1) + (q * 1);
+                            obj.vcount = financial(obj.count);
+                            t = t + (q * 1);
+                        } else {
+                            offers.b.push({ price: p, count: q, vcount: financial(q) });
+                            t = t + (q * 1);
+                        }
+                    }
+                }
+                if (t != 0) {
+                    offers.bt = (offers.bt * 1) + (t * 1);
+                    bt = offers.bt;
+                    offers.vbt = financial(offers.bt);
+                }
+            }
+
+            offers.a = offers.a.sort(function (obj1, obj2) {
+
+                return obj1.price - obj2.price;
+            })
+
+            offers.b = offers.b.sort(function (obj1, obj2) {
+
+                return obj2.price - obj1.price;
+            })
+            // sortProperties(offers.a, 'price', true, false);
+            //sortProperties(offers.b, 'price', true, true);
+            // difference= priceDiffCalculate(offers);
+            difference = ((offers.bt * 1) - ((offers.at * 1)));
+            //  differenceab = ((offers.at * 1) / ((difference * 1)));
+           // console.log(difference);
+
+            return offers;
+        }
+        //wss://stream.binance.com:9443/ws/btcusdt@ticker
+
+        function runTickerBTC() {
+
+            var connectionUrl = 'wss://stream.binance.com:9443/ws/{{market}}usdt@ticker';
+            connectionUrl = connectionUrl.replaceAll('{{market}}', marketName);
+            newSocketConnection(connectionUrl, function (event) {
+
+
+                var data = JSON.parse(event.data);
+                btcPrice = data.c;
+
+            });
+        }
+
+        function runTicker(symbol) {
+            if (!symbol) {
+               // console.log('No Symbol specified');
+                return;
+            }
+            var connectionUrl = 'wss://stream.binance.com:9443/ws/' + symbol + '@ticker';
+            newSocketConnection(connectionUrl, function (event) {
+                //callback
+                if (window && window.parent && window.parent.receiver) {
+                    window.parent.receiver(event.data);
+                }
+
+                var data = processMessage(JSON.parse(event.data));
+                currentPrice.p = data.c.value;
+                if (offers) {
+                    data.offers = offers;
+                }
+                if (btcPrice != 0) {
+                    data.btcPrice = btcPrice;
+                    data.usdPrice = ((btcPrice * 1) * (data.c.value * 1)).toFixed(4);
+                    trader.curBTC = data.btcPrice;
+                    trader.curUSD = data.usdPrice;
+
+                    var purchaseAmount = $('#purchase-amount').val();
+                    trader.tradeStartAmount = purchaseAmount;
+                    //btcPrice
+                    trader.curBTC = (((trader.tradeStartAmount || 0) * 1) / (btcPrice * 1)).toFixed(8);
+                    trader.curUSD = (((trader.tradeStartAmount || 0) * 1) * (trader.curUSD * 1)).toFixed(2);
+                    trader.ComBTC = ((trader.curBTC * 1) / 1000).toFixed(8);
+
+                    trader.ComUSD = ((trader.curUSD * 1) / 1000).toFixed(2);
+
+                    trader.netBTC = numberWithCommas(((trader.curBTC * 1) - (trader.ComBTC * 1)).toFixed(8));
+                    trader.netUSD = numberWithCommas(((trader.curUSD * 1) - (trader.ComUSD * 1)).toFixed(2));
+
+
+                    var html = handlebarsTemplates['tickerDivTrade-template'](trader);
+                    renderTemplate(html, trader, "tickerDivTrade-templatehtml", false, false, true);
+                   // console.log('btc:' + trader.curBTC + ' usd:' + trader.curUSD);
+                }
+                if (coinIcon!='') {
+                    data.icon = coinIcon;
+                }
+                if (selectedCoin != '') {
+                    selectedCoin.usdPrice = data.usdPrice;
+                    selectedCoin.btcPrice = data.btcPrice;
+
+                    data.selectedCoin = selectedCoin;
+                    data.actualTF = (tradingFeePercentage * (selectedCoin.usdPrice * 1)).toFixed(4);
+                    data.reelTF = (((data.actualTF * 1).toFixed(4) * 1) + (((selectedCoin.usdPrice * 1) * ((selectedCoin.kd * 1) * (tradingFeePercentage))).toFixed(4) * 1)).toFixed(4);
+                }
+
+
+                var html = handlebarsTemplates['tickerDiv-template'](data);
+                renderTemplate(html, data, "tickerDiv-templatehtml", false, false, true);
+            });
+        }
+
+        function runPrice(symbol) {
+            if (!symbol) {
+               // console.log('No Symbol specified');
+                return;
+            }
+            var connectionUrl = 'wss://stream.binance.com:9443/stream?streams=' + symbol + '@depth';
+            newSocketConnection(connectionUrl, function (event) {
+                //callback
+                //if (window && window.parent && window.parent.receiver) {
+                //    window.parent.receiver(event.data);
+                //}
+
+                var data = eventCalculator(JSON.parse(event.data));
+
+                var html = handlebarsTemplates['tickerDivPrice-template'](data);
+                renderTemplate(html, data, "tickerDivPrice-templatehtml", false, false, true);
+            });
+        }
+
+        function newSocketConnection(connectionUrl, callback) {
+            var socket = new WebSocket(connectionUrl);
+            socket.onopen = function (event) {
+
+
+            };
+            socket.onclose = function (event) {
+
+            };
+            socket.onerror = function (event) {
+
+            };
+
+            socket.onmessage = function (event) {
+
+                callback(event);
+            };
+        }
+
+        function htmlEscape(str) {
+            if (str) {
+
+
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+        }
+
+        function renderTemplate(Source, data, target, observe, watcher, precompiled) {
+            if (precompiled) {
+                document.getElementById(target).innerHTML = Source;
+            } else {
+
+                var source = document.getElementById(Source).innerHTML;
+                var template = Handlebars.compile(source);
+                document.getElementById(target).innerHTML = template(data);
+            }
+            if (observe && !watcher) {
+                debugger;
+                data._element = {};
+                data._element.source = Source;
+                data._element.target = target;
+                data._element.observe = observe;
+                watch(data, function () {
+                    renderTemplate(data._element.source, data, data._element.target, data._element.observe, true);
+                });
+            }
+        };
+
+        function priceDiffCalculate(offer) {
+
+            if (offer.a && offer.b) {
+                var d = offer.a;
+                for (var i = 0; i < d.length; i++) {
+                    if (d[i] && d[i].count && d[i].price == currentPrice.p) {
+
+                        var p = d[i].price;
+                        var q = d[i].count;
+
+                        var objb = offers.b.find(function (obj) { return obj.price === p; });
+                        if (objb) {
+                            d[i].dif = (d[i].count * 1) - (objb.count * 1);
+                            return d[i].dif;
+                        }
+                    }
+                }
+
+            }
+        }
+
+
+        var handlebarsTemplates = {};
+        $(function () {
+
+            // Compile all templates
+            $('script[type="text/x-handlebars-template"]').each(function (index, element) {
+                var $element = $(element),
+                    partialName = $element.attr('data-register-partial-as');
+                self.handlebarsTemplates[element.id] = Handlebars.compile($element.html());
+                if (partialName) {
+                    Handlebars.registerPartial(partialName, $element.html());
+                }
+            });
+
+            Handlebars.registerHelper('toFixed', function (options,digit) {
+                return (options*1).toFixed(digit);
+            });
+
+            Handlebars.registerHelper({
+                eq: function (v1, v2) {
+                    return v1 === v2;
+                },
+                ne: function (v1, v2) {
+                    return v1 !== v2;
+                },
+                lt: function (v1, v2) {
+                    return v1 < v2;
+                },
+                gt: function (v1, v2) {
+                    return v1 > v2;
+                },
+                lte: function (v1, v2) {
+                    return v1 <= v2;
+                },
+                gte: function (v1, v2) {
+                    return v1 >= v2;
+                },
+                and: function () {
+                    return Array.prototype.slice.call(arguments).every(Boolean);
+                },
+                or: function () {
+                    return Array.prototype.slice.call(arguments, 0, -1).some(Boolean);
+                }
+            });
+
+        });
+
+        function joinmarket() {
+            var url = 'binancex.html?sym={{sym}}{{market}}&m={{market}}&s={{sym}}';
+            if ($('.coin-select').val() != '' && $('.market-select').val()!='') {
+                url = url.replaceAll('{{sym}}', $('.coin-select').val().toLowerCase());
+                url = url.replaceAll('{{market}}', $('.market-select').val().toLowerCase());
+                window.location.href = url;
+            } else {
+                alert('Please select a coin and market');
+            }
+        }
+        function findIcon(sym) {
+            for (var i = 0; i < coins.length; i++) {
+                if (coins[i].c == sym) {
+                    return coins[i];
+                }
+            }
+            return '';
+        }
+
+        $(document).ready(function () {
+            runTicker(sym);
+            runPrice(sym);
+            runTickerBTC();
+            if (coinName) {
+                selectedCoin = findIcon(coinName.toUpperCase());
+                coinIcon = selectedCoin.i;
+            }
+            $('.coin-join').on('click', function () {
+
+                joinmarket();
+            });
+
+            $('.coin-purchase').on('click', function () {
+                $('#purchase-amount').attr('readonly','readonly');
+                $('.coin-purchase').hide();
+                $('.coin-cancel').show();
+                $('.coin-buy').hide();
+                $('.coin-sell').show();
+                trader.tradeStarted = true;
+                doTrade(true);
+            });
+
+            $('.coin-cancel').on('click', function () {
+                $('#purchase-amount').removeAttr('readonly');
+                $('.coin-purchase').show();
+                $('.coin-cancel').hide();
+                $('.coin-buy').hide();
+                $('.coin-sell').hide();
+                trader.tradeStarted = false;
+            });
+
+            $('.coin-buy').on('click', function () {
+
+                trader.tradeStarted = true;
+                doTrade(true);
+            });
+
+            $('.coin-sell').on('click', function () {
+
+                trader.tradeStarted = true;
+                doTrade(false);
+            });
+
+
+
+            //watch(trader, ["curBTC", "curUSD"], function () {
+
+
+            //});
+
+        });
+
+        function doTrade(isbuy,amount) {
+            if (trader.tradeStarted) {
+                var tr = {};
+                tr.time = moment().add(0, 's').format(timeFormat);
+                if (isbuy) {
+                    $('.coin-buy').hide();
+                    $('.coin-sell').show();
+                    tr.buyPriceUSD = trader.netUSD;//TODO
+                    tr.buyPriceBTC = trader.netBTC;//TODO
+                    if (trader.trades.transactions.length>0) {
+                        var lastTransaction = trader.trades.transactions.slice(-1).pop();
+                    }
+
+                    trader.trades.transactions.push(tr);
+                } else {
+
+                    $('.coin-buy').show();
+                    $('.coin-sell').hide();
+                    tr.sellPriceUSD = trader.netUSD;//TODO
+                    tr.sellPriceBTC = trader.netBTC;//TODO
+                    if (trader.trades.transactions.length > 0) {
+                        var lastTransaction = trader.trades.transactions.slice(-1).pop();
+                    }
+
+                    trader.trades.transactions.push(tr);
+                }
+            }
+        }
+
+        var predictionLog = [];
+
+        var trader = {
+            curBTC: 0, curUSD: 0, tradeStarted:'', tradeStartAmount: 0, trades: { transactions: [] }
+        };
+        var traderTransaction = { time: '', buyPriceUSD: 0, buyPriceBTC: 0, sellPriceBTC: 0, sellPriceUSD: 0, amount: 0, currentPriceUSD: 0, currentPriceBTC: 0, commissionCostUSD: 0, commissionCostBTC: 0, profit: 0, LossUSD: 0, LossBTC: 0, percent: 0, delay: 0 };
+
+
+
+        var coins = [{ "c": "Coin", "n": "Name", "w": "Minimum Withdrawal", "k": "Transaction Fee", "kd": "Transaction Fee" }, { "c": "BNB", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205843840.png", "n": "Binance Coin", "w": "2", "k": "1  BNB", "kd": "1  " }, { "c": "BTC", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205865716.png", "n": "Bitcoin", "w": "0.002", "k": "0.0005  BTC", "kd": "0.0005  " }, { "c": "NEO", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206017412.png", "n": "NEO", "w": "1", "k": "0  NEO", "kd": "0  " }, { "c": "ETH", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205918473.png", "n": "Ethereum", "w": "0.02", "k": "0.01  ETH", "kd": "0.01  " }, { "c": "LTC", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205996222.png", "n": "Litecoin", "w": "0.02", "k": "0.01  LTC", "kd": "0.01  " }, { "c": "QTUM", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206050748.png", "n": "Qtum", "w": "0.02", "k": "0.01  QTUM", "kd": "0.01  " }, { "c": "EOS", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205906277.png", "n": "EOS", "w": "0.6", "k": "0.3  EOS", "kd": "0.3  " }, { "c": "SNT", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206059941.png", "n": "Status", "w": "76", "k": "38  SNT", "kd": "38  " }, { "c": "BNT", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205856201.png", "n": "Bancor", "w": "1.8", "k": "0.9  BNT", "kd": "0.9  " }, { "c": "GAS", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205927020.png", "n": "NeoGas", "w": "0.001", "k": "0  GAS", "kd": "0  " }, { "c": "BCC", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205829543.png", "n": "Bitcoin Cash", "w": "0.002", "k": "0.001  BCC", "kd": "0.001  " }, { "c": "BTM", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205875875.png", "n": "Bytom", "w": "10", "k": "5  BTM", "kd": "5  " }, { "c": "USDT", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206084518.png", "n": "TetherUS", "w": "7.6", "k": "3.8  USDT", "kd": "3.8  " }, { "c": "HCC", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205938291.png", "n": "HealthCare Chain", "w": "0.001", "k": "0.0005  HCC", "kd": "0.0005  " }, { "c": "HSR", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205949558.png", "n": "Hshare", "w": "0.001", "k": "0.0001  HSR", "kd": "0.0001  " }, { "c": "OAX", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206029978.png", "n": "openANX", "w": "13", "k": "6.5  OAX", "kd": "6.5  " }, { "c": "DNT", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205888589.png", "n": "district0x", "w": "118", "k": "59  DNT", "kd": "59  " }, { "c": "MCO", "i": "https://ex.bnbstatic.com/file/resources/img/20180426/image_1524719677974.png", "n": "MONACO", "w": "1.06", "k": "0.53  MCO", "kd": "0.53  " }, { "c": "ICN", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205963648.png", "n": "ICONOMI", "w": "7.6", "k": "3.8  ICN", "kd": "3.8  " }, { "c": "ZRX", "i": "https://ex.bnbstatic.com/file/resources/img/20171025/image_1508915067776.png", "n": "0x", "w": "5.8", "k": "2.9  ZRX", "kd": "2.9  " }, { "c": "OMG", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206038128.png", "n": "OmiseGO", "w": "0.64", "k": "0.32  OMG", "kd": "0.32  " }, { "c": "WTC", "i": "https://ex.bnbstatic.com/file/resources/img/20180330/image_1522377442994.png", "n": "Walton", "w": "0.8", "k": "0.4  WTC", "kd": "0.4  " }, { "c": "LRC", "i": "https://ex.bnbstatic.com/file/resources/img/20171120/image_1511158249148.png", "n": "Loopring", "w": "14.2", "k": "7.1  LRC", "kd": "7.1  " }, { "c": "LLT", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505205975503.png", "n": "LLToken", "w": "2", "k": "67.8  LLT", "kd": "67.8  " }, { "c": "YOYO", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505206106804.png", "n": "YOYOW", "w": "74", "k": "37  YOYO", "kd": "37  " }, { "c": "TRX", "i": "https://ex.bnbstatic.com/file/resources/img/20180409/image_1523238899568.jpg", "n": "TRON", "w": "122", "k": "61  TRX", "kd": "61  " }, { "c": "STRAT", "i": "https://ex.bnbstatic.com/file/resources/img/20170912/image_1505222968922.png", "n": "Stratis", "w": "0.002", "k": "0.1  STRAT", "kd": "0.1  " }, { "c": "SNGLS", "i": "https://ex.bnbstatic.com/file/resources/img/20170913/image_1505271817831.png", "n": "SingularDTV", "w": "116", "k": "58  SNGLS", "kd": "58  " }, { "c": "BQX", "i": "https://ex.bnbstatic.com/file/resources/img/20171121/image_1511241921766.png", "n": "ETHOS", "w": "3.2", "k": "1.6  BQX", "kd": "1.6  " }, { "c": "KNC", "i": "https://ex.bnbstatic.com/file/resources/img/20170925/image_1506303943009.png", "n": "KyberNetwork", "w": "5", "k": "2.5  KNC", "kd": "2.5  " }, { "c": "SNM", "i": "https://ex.bnbstatic.com/file/resources/img/20170927/image_1506483085195.png", "n": "SONM", "w": "38", "k": "19  SNM", "kd": "19  " }, { "c": "FUN", "i": "https://ex.bnbstatic.com/file/resources/img/20170922/image_1506059490806.png", "n": "FunFair", "w": "210", "k": "105  FUN", "kd": "105  " }, { "c": "LINK", "i": "https://ex.bnbstatic.com/file/resources/img/20170928/image_1506580886609.png", "n": "ChainLink", "w": "21", "k": "10.5  LINK", "kd": "10.5  " }, { "c": "XVG", "i": "https://ex.bnbstatic.com/file/resources/img/20170922/image_1506059763733.png", "n": "Verge", "w": "0.2", "k": "0.1  XVG", "kd": "0.1  " }, { "c": "CTR", "i": "https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667451124.png", "n": "Centra", "w": "70", "k": "35  CTR", "kd": "35  " }, { "c": "SALT", "i": "https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667649220.png", "n": "Salt", "w": "3.8", "k": "1.9  SALT", "kd": "1.9  " }, { "c": "MDA", "i": "https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667555189.png", "n": "Moeda Loyalty Points", "w": "9.6", "k": "4.8  MDA", "kd": "4.8  " }, { "c": "IOTA", "i": "https://ex.bnbstatic.com/file/resources/img/20171025/image_1508914676824.png", "n": "MIOTA", "w": "10", "k": "0.5  IOTA", "kd": "0.5  " }, { "c": "SUB", "i": "https://ex.bnbstatic.com/file/resources/img/20171009/image_1507547247311.png", "n": "Substratum", "w": "17.8", "k": "8.9  SUB", "kd": "8.9  " }, { "c": "ETC", "i": "https://ex.bnbstatic.com/file/resources/img/20171011/image_1507706991862.png", "n": "Ethereum Classic", "w": "0.02", "k": "0.01  ETC", "kd": "0.01  " }, { "c": "MTL", "i": "https://ex.bnbstatic.com/file/resources/img/20170929/image_1506667633982.png", "n": "Metal", "w": "2.6", "k": "1.3  MTL", "kd": "1.3  " }, { "c": "MTH", "i": "https://ex.bnbstatic.com/file/resources/img/20171009/image_1507548356971.png", "n": "Monetha", "w": "98", "k": "49  MTH", "kd": "49  " }, { "c": "ENG", "i": "https://ex.bnbstatic.com/file/resources/img/20171025/image_1508914582957.png", "n": "Enigma", "w": "3.8", "k": "1.9  ENG", "kd": "1.9  " }, { "c": "AST", "i": "https://ex.bnbstatic.com/file/resources/img/20171019/image_1508384731363.png", "n": "AirSwap", "w": "25.6", "k": "12.8  AST", "kd": "12.8  " }, { "c": "DASH", "i": "https://ex.bnbstatic.com/file/resources/img/20171019/image_1508403867407.png", "n": "Dash", "w": "0.004", "k": "0.002  DASH", "kd": "0.002  " }, { "c": "BTG", "i": "https://ex.bnbstatic.com/file/resources/img/20171024/image_1508826709624.png", "n": "Bitcoin Gold", "w": "0.002", "k": "0.001  BTG", "kd": "0.001  " }, { "c": "EVX", "i": "https://ex.bnbstatic.com/file/resources/img/20171026/image_1509023050245.png", "n": "Everex", "w": "6.8", "k": "3.4  EVX", "kd": "3.4  " }, { "c": "REQ", "i": "https://ex.bnbstatic.com/file/resources/img/20171024/image_1508829156738.png", "n": "Request Network", "w": "50.8", "k": "25.4  REQ", "kd": "25.4  " }, { "c": "VIB", "i": "https://ex.bnbstatic.com/file/resources/img/20171030/image_1509348017942.png", "n": "Viberate", "w": "56", "k": "28  VIB", "kd": "28  " }, { "c": "POWR", "i": "https://ex.bnbstatic.com/file/resources/img/20171106/image_1509981524302.jpg", "n": "PowerLedger", "w": "21.6", "k": "10.8  POWR", "kd": "10.8  " }, { "c": "ARK", "i": "https://ex.bnbstatic.com/file/resources/img/20171101/image_1509522811096.png", "n": "Ark", "w": "0.2", "k": "0.1  ARK", "kd": "0.1  " }, { "c": "XRP", "i": "https://ex.bnbstatic.com/file/resources/img/20171102/image_1509591927913.png", "n": "Ripple", "w": "22", "k": "0.25  XRP", "kd": "0.25  " }, { "c": "MOD", "i": "https://ex.bnbstatic.com/file/resources/img/20171102/image_1509625627340.png", "n": "Modum", "w": "6", "k": "3  MOD", "kd": "3  " }, { "c": "ENJ", "i": "https://ex.bnbstatic.com/file/resources/img/20171101/image_1509520130798.png", "n": "EnjinCoin", "w": "74", "k": "37  ENJ", "kd": "37  " }, { "c": "STORJ", "i": "https://ex.bnbstatic.com/file/resources/img/20171103/image_1509677596887.png", "n": "Storj", "w": "9.4", "k": "4.7  STORJ", "kd": "4.7  " }, { "c": "VEN", "i": "https://ex.bnbstatic.com/file/resources/img/20171031/image_1509439789085.png", "n": "VeChain", "w": "2", "k": "1  VEN", "kd": "1  " }, { "c": "KMD", "i": "https://ex.bnbstatic.com/file/resources/img/20180308/image_1520502422345.jpg", "n": "Komodo", "w": "0.004", "k": "0.002  KMD", "kd": "0.002  " }, { "c": "RCN", "i": "https://ex.bnbstatic.com/file/resources/img/20171108/image_1510106190929.png", "n": "Ripio Credit Network", "w": "84", "k": "42  RCN", "kd": "42  " }, { "c": "NULS", "i": "https://ex.bnbstatic.com/file/resources/img/20171108/image_1510110758483.png", "n": "Nuls", "w": "2", "k": "1  NULS", "kd": "1  " }, { "c": "RDN", "i": "https://ex.bnbstatic.com/file/resources/img/20171109/image_1510216636765.png", "n": "Raiden Network Token", "w": "5.4", "k": "2.7  RDN", "kd": "2.7  " }, { "c": "XMR", "i": "https://ex.bnbstatic.com/file/resources/img/20171026/image_1508995469670.png", "n": "Monero", "w": "0.1", "k": "0.04  XMR", "kd": "0.04  " }, { "c": "DLT", "i": "https://ex.bnbstatic.com/file/resources/img/20171109/image_1510215877697.png", "n": "Agrello", "w": "40.8", "k": "20.4  DLT", "kd": "20.4  " }, { "c": "AMB", "i": "https://ex.bnbstatic.com/file/resources/img/20171110/image_1510320967152.png", "n": "Ambrosus", "w": "17.8", "k": "8.9  AMB", "kd": "8.9  " }, { "c": "BAT", "i": "https://ex.bnbstatic.com/file/resources/img/20171019/image_1508391661769.png", "n": "Basic Attention Token", "w": "26", "k": "13  BAT", "kd": "13  " }, { "c": "ZEC", "i": "https://ex.bnbstatic.com/file/resources/img/20171013/image_1507901872095.png", "n": "Zcash", "w": "0.01", "k": "0.005  ZEC", "kd": "0.005  " }, { "c": "BCPT", "i": "https://ex.bnbstatic.com/file/resources/img/20171114/image_1510648118020.png", "n": "BlockMason Credit Protocol", "w": "23.8", "k": "11.9  BCPT", "kd": "11.9  " }, { "c": "ARN", "i": "https://ex.bnbstatic.com/file/resources/img/20171114/image_1510671881822.jpg", "n": "Aeron", "w": "5.6", "k": "2.8  ARN", "kd": "2.8  " }, { "c": "GVT", "i": "https://ex.bnbstatic.com/file/resources/img/20171116/image_1510824071655.png", "n": "Genesis Vision", "w": "0.48", "k": "0.24  GVT", "kd": "0.24  " }, { "c": "CDT", "i": "https://ex.bnbstatic.com/file/resources/img/20180309/image_1520578603190.png", "n": "Blox", "w": "174", "k": "87  CDT", "kd": "87  " }, { "c": "GXS", "i": "https://ex.bnbstatic.com/file/resources/img/20171110/image_1510306370952.png", "n": "GXChain", "w": "0.6", "k": "0.3  GXS", "kd": "0.3  " }, { "c": "POE", "i": "https://ex.bnbstatic.com/file/resources/img/20171116/image_1510824136094.png", "n": "Po.et", "w": "252", "k": "126  POE", "kd": "126  " }, { "c": "QSP", "i": "https://ex.bnbstatic.com/file/resources/img/20171121/image_1511257194898.png", "n": "Quantstamp", "w": "46", "k": "23  QSP", "kd": "23  " }, { "c": "BTS", "i": "https://ex.bnbstatic.com/file/resources/img/20171117/image_1510907797544.png", "n": "BitShares", "w": "50", "k": "1  BTS", "kd": "1  " }, { "c": "XZC", "i": "https://ex.bnbstatic.com/file/resources/img/20171120/image_1511158732921.png", "n": "ZCoin", "w": "0.04", "k": "0.02  XZC", "kd": "0.02  " }, { "c": "LSK", "i": "https://ex.bnbstatic.com/file/resources/img/20171122/image_1511321260299.png", "n": "Lisk", "w": "0.2", "k": "0.1  LSK", "kd": "0.1  " }, { "c": "TNT", "i": "https://ex.bnbstatic.com/file/resources/img/20170929/image_1506663322485.png", "n": "Tierion", "w": "96", "k": "48  TNT", "kd": "48  " }, { "c": "FUEL", "i": "https://ex.bnbstatic.com/file/resources/img/20171117/image_1510908227868.png", "n": "Etherparty", "w": "134", "k": "67  FUEL", "kd": "67  " }, { "c": "MANA", "i": "https://ex.bnbstatic.com/file/resources/img/20171109/image_1510216206256.png", "n": "Decentraland", "w": "74", "k": "37  MANA", "kd": "37  " }, { "c": "BCD", "i": "https://ex.bnbstatic.com/file/resources/img/20171124/image_1511523799592.jpg", "n": "Bitcoin Diamond", "w": "2", "k": "1  BCD", "kd": "1  " }, { "c": "DGD", "i": "https://ex.bnbstatic.com/file/resources/img/20171019/image_1508391643074.png", "n": "DigixDAO", "w": "0.06", "k": "0.03  DGD", "kd": "0.03  " }, { "c": "ADX", "i": "https://ex.bnbstatic.com/file/resources/img/20171009/image_1507548609168.png", "n": "AdEx", "w": "11.6", "k": "5.8  ADX", "kd": "5.8  " }, { "c": "ADA", "i": "https://ex.bnbstatic.com/file/resources/img/20171130/image_1512031982603.png", "n": "Cardano", "w": "4", "k": "1  ADA", "kd": "1  " }, { "c": "PPT", "i": "https://ex.bnbstatic.com/file/resources/img/20171109/image_1510216326112.png", "n": "Populous", "w": "0.6", "k": "0.3  PPT", "kd": "0.3  " }, { "c": "CMT", "i": "https://ex.bnbstatic.com/file/resources/img/20171208/image_1512738585293.png", "n": "CyberMiles", "w": "22", "k": "11  CMT", "kd": "11  " }, { "c": "XLM", "i": "https://ex.bnbstatic.com/file/resources/img/20171205/image_1512452892544.png", "n": "Stellar Lumens", "w": "21", "k": "0.01  XLM", "kd": "0.01  " }, { "c": "CND", "i": "https://ex.bnbstatic.com/file/resources/img/20171114/image_1510648594048.png", "n": "Cindicator", "w": "118", "k": "59  CND", "kd": "59  " }, { "c": "LEND", "i": "https://ex.bnbstatic.com/file/resources/img/20171201/image_1512124243653.png", "n": "EthLend", "w": "158", "k": "79  LEND", "kd": "79  " }, { "c": "WABI", "i": "https://ex.bnbstatic.com/file/resources/img/20171213/image_1513135814428.png", "n": "WaBi", "w": "9.6", "k": "4.8  WABI", "kd": "4.8  " }, { "c": "SBTC", "i": "https://ex.bnbstatic.com/file/resources/img/20180307/image_1520392640143.png", "n": "Super Bitcoin", "w": "0.001", "k": "0.0005  SBTC", "kd": "0.0005  " }, { "c": "BCX", "i": "https://ex.bnbstatic.com/file/resources/img/20180322/image_1521714878838.png", "n": "BitcoinX", "w": "0.5", "k": "0.5  BCX", "kd": "0.5  " }, { "c": "WAVES", "i": "https://ex.bnbstatic.com/file/resources/img/20180314/image_1521040766829.png", "n": "Waves", "w": "0.1", "k": "0.002  WAVES", "kd": "0.002  " }, { "c": "TNB", "i": "https://ex.bnbstatic.com/file/resources/img/20171128/image_1511836082341.png", "n": "Time New Bank", "w": "194", "k": "97  TNB", "kd": "97  " }, { "c": "GTO", "i": "https://ex.bnbstatic.com/file/resources/img/20171218/image_1513583310766.png", "n": "Gifto", "w": "32", "k": "16  GTO", "kd": "16  " }, { "c": "ICX", "i": "https://ex.bnbstatic.com/file/resources/img/20171218/image_1513572940018.png", "n": "ICON", "w": "2.8", "k": "1.4  ICX", "kd": "1.4  " }, { "c": "OST", "i": "https://ex.bnbstatic.com/file/resources/img/20180323/image_1521771657067.png", "n": "OST", "w": "50", "k": "25  OST", "kd": "25  " }, { "c": "ELF", "i": "https://ex.bnbstatic.com/file/resources/img/20171222/image_1513958378896.png", "n": "aelf", "w": "7", "k": "3.5  ELF", "kd": "3.5  " }, { "c": "AION", "i": "https://ex.bnbstatic.com/file/resources/img/20171221/image_1513829272787.png", "n": "AION", "w": "3.4", "k": "1.7  AION", "kd": "1.7  " }, { "c": "CVC", "i": "https://ex.bnbstatic.com/file/resources/img/20170929/image_1506663234460.png", "n": "Civic", "w": "23", "k": "11.5  CVC", "kd": "11.5  " }, { "c": "REP", "i": "https://ex.bnbstatic.com/file/resources/img/20170929/image_1506663402998.png", "n": "Augur", "w": "0.2", "k": "0.1  REP", "kd": "0.1  " }, { "c": "GNT", "i": "https://ex.bnbstatic.com/file/resources/img/20171019/image_1508391540195.png", "n": "Golem", "w": "12.4", "k": "6.2  GNT", "kd": "6.2  " }, { "c": "ETF", "i": "https://ex.bnbstatic.com", "n": "ETF", "w": "2", "k": "1  ETF", "kd": "1  " }, { "c": "BRD", "i": "https://ex.bnbstatic.com/file/resources/img/20171221/image_1513841739932.jpg", "n": "Bread", "w": "13", "k": "6.5  BRD", "kd": "6.5  " }, { "c": "NEBL", "i": "https://ex.bnbstatic.com/file/resources/img/20171222/image_1513913163140.png", "n": "Neblio", "w": "0.1", "k": "0.01  NEBL", "kd": "0.01  " }, { "c": "VIBE", "i": "https://ex.bnbstatic.com/file/resources/img/20180110/image_1515564920486.png", "n": "VIBE", "w": "47.2", "k": "23.6  VIBE", "kd": "23.6  " }, { "c": "LUN", "i": "https://ex.bnbstatic.com/file/resources/img/20171229/image_1514527049798.png", "n": "Lunyr", "w": "0.62", "k": "0.31  LUN", "kd": "0.31  " }, { "c": "CHAT", "i": "https://ex.bnbstatic.com/file/resources/img/20180131/image_1517393276792.png", "n": "ChatCoin", "w": "91.6", "k": "45.8  CHAT", "kd": "45.8  " }, { "c": "RLC", "i": "https://ex.bnbstatic.com/file/resources/img/20180112/image_1515736361825.png", "n": "iExecRLC", "w": "4.6", "k": "2.3  RLC", "kd": "2.3  " }, { "c": "INS", "i": "https://ex.bnbstatic.com/file/resources/img/20180115/image_1515997634519.png", "n": "INS Ecosystem", "w": "6.6", "k": "3.3  INS", "kd": "3.3  " }, { "c": "IOST", "i": "https://ex.bnbstatic.com/file/resources/img/20180124/image_1516772742823.png", "n": "IOStoken", "w": "168.8", "k": "84.4  IOST", "kd": "84.4  " }, { "c": "STEEM", "i": "https://ex.bnbstatic.com/file/resources/img/20180131/image_1517365556047.png", "n": "Steem", "w": "0.02", "k": "0.01  STEEM", "kd": "0.01  " }, { "c": "NANO", "i": "https://ex.bnbstatic.com/file/resources/img/20180202/image_1517565888589.png", "n": "NANO", "w": "1", "k": "0.01  NANO", "kd": "0.01  " }, { "c": "AE", "i": "https://ex.bnbstatic.com/file/resources/img/20180207/image_1518003804150.png", "n": "Aeternity", "w": "2.2", "k": "1.1  AE", "kd": "1.1  " }, { "c": "VIA", "i": "https://ex.bnbstatic.com/file/resources/img/20180205/image_1517815991015.png", "n": "Viacoin", "w": "1", "k": "0.01  VIA", "kd": "0.01  " }, { "c": "BLZ", "i": "https://ex.bnbstatic.com/file/resources/img/20180207/image_1517986673584.png", "n": "Bluzelle", "w": "17.4", "k": "8.7  BLZ", "kd": "8.7  " }, { "c": "SYS", "i": "https://ex.bnbstatic.com/file/resources/img/20180328/image_1522224189990.png", "n": "Syscoin", "w": "0.002", "k": "0.001  SYS", "kd": "0.001  " }, { "c": "RPX", "i": "https://ex.bnbstatic.com/file/resources/img/20180212/image_1518404945756.png", "n": "Red Pulse", "w": "2", "k": "1  RPX", "kd": "1  " }, { "c": "NCASH", "i": "https://ex.bnbstatic.com/file/resources/img/20180228/image_1519800274250.png", "n": "Nucleus Vision", "w": "300", "k": "150  NCASH", "kd": "150  " }, { "c": "POA", "i": "https://ex.bnbstatic.com/file/resources/img/20180228/image_1519800408882.png", "n": "POA Network", "w": "0.02", "k": "0.01  POA", "kd": "0.01  " }, { "c": "ONT", "i": "https://ex.bnbstatic.com/file/resources/img/20180306/image_1520315898087.jpg", "n": "Ontology", "w": "0.2", "k": "0.1  ONT", "kd": "0.1  " }, { "c": "ZIL", "i": "https://ex.bnbstatic.com/file/resources/img/20180305/image_1520229394441.png", "n": "Zilliqa", "w": "58.8", "k": "29.4  ZIL", "kd": "29.4  " }, { "c": "STORM", "i": "https://ex.bnbstatic.com/file/resources/img/20180515/image_1526365827394.jpg", "n": "Storm", "w": "220", "k": "110  STORM", "kd": "110  " }, { "c": "XEM", "i": "https://ex.bnbstatic.com/file/resources/img/20180320/image_1521525511648.png", "n": "NEM", "w": "8", "k": "4  XEM", "kd": "4  " }, { "c": "WAN", "i": "https://ex.bnbstatic.com/file/resources/img/20180323/image_1521771705432.png", "n": "Wancoin", "w": "0.2", "k": "0.1  WAN", "kd": "0.1  " }, { "c": "WPR", "i": "https://ex.bnbstatic.com/file/resources/img/20180329/image_1522303661084.png", "n": "WePower", "w": "91.2", "k": "45.6  WPR", "kd": "45.6  " }, { "c": "QLC", "i": "https://ex.bnbstatic.com/file/resources/img/20180326/image_1522053510508.png", "n": "QLINK", "w": "2", "k": "1  QLC", "kd": "1  " }, { "c": "GRS", "i": "https://ex.bnbstatic.com/file/resources/img/20180404/image_1522832531039.png", "n": "Groestlcoin", "w": "0.4", "k": "0.2  GRS", "kd": "0.2  " }, { "c": "CLOAK", "i": "https://ex.bnbstatic.com/file/resources/img/20180418/image_1524032518841.png", "n": "CloakCoin", "w": "0.04", "k": "0.02  CLOAK", "kd": "0.02  " }, { "c": "LOOM", "i": "https://ex.bnbstatic.com/file/resources/img/20180502/image_1525241908783.png", "n": "Loom Network", "w": "20.4", "k": "10.2  LOOM", "kd": "10.2  " }, { "c": "BCN", "i": "https://ex.bnbstatic.com/file/resources/img/20180508/image_1525747900979.png", "n": "Bytecoin", "w": "2", "k": "1  BCN", "kd": "1  " }, { "c": "TUSD", "i": "https://ex.bnbstatic.com/file/resources/img/20180516/image_1526456481890.png", "n": "TrueUSD", "w": "7.04", "k": "3.52  TUSD", "kd": "3.52  " }, { "c": "ZEN", "i": "https://ex.bnbstatic.com/file/resources/img/20180523/image_1527043231900.png", "n": "ZenCash", "w": "0.004", "k": "0.002  ZEN", "kd": "0.002  " }, { "c": "SKY", "i": "https://ex.bnbstatic.com/file/resources/img/20180523/image_1527069736170.png", "n": "Skycoin", "w": "0.02", "k": "0.01  SKY", "kd": "0.01  " }, { "c": "THETA", "i": "https://ex.bnbstatic.com/file/resources/img/20180529/image_1527576680752.png", "n": "Theta Token", "w": "48", "k": "24  THETA", "kd": "24  " }, { "c": "IOTX", "i": "https://ex.bnbstatic.com/file/resources/img/20180601/image_1527828851821.jpg", "n": "IoTeX", "w": "145.2", "k": "72.6  IOTX", "kd": "72.6  " }, { "c": "QKC", "i": "https://ex.bnbstatic.com/file/resources/img/20180604/image_1528092041671.png", "n": "QuarkChain", "w": "200", "k": "100  QKC", "kd": "100  " }, { "c": "EDO", "i": "https://ex.bnbstatic.com/file/resources/img/20171108/image_1510106214200.png", "n": "Eidoo", "w": "5", "k": "2.5  EDO", "kd": "2.5  " }, { "c": "WINGS", "i": "https://ex.bnbstatic.com/file/resources/img/20171226/image_1514258663277.png", "n": "WINGS", "w": "18.6", "k": "9.3  WINGS", "kd": "9.3  " }, { "c": "NAV", "i": "https://ex.bnbstatic.com/file/resources/img/20171227/image_1514364698462.png", "n": "NAV Coin", "w": "0.4", "k": "0.2  NAV", "kd": "0.2  " }, { "c": "TRIG", "i": "https://ex.bnbstatic.com/file/resources/img/20171229/image_1514527032454.png", "n": "Triggers", "w": "39.6", "k": "19.8  TRIG", "kd": "19.8  " }, { "c": "APPC", "i": "https://ex.bnbstatic.com/file/resources/img/20180105/image_1515167857981.jpg", "n": "AppCoins", "w": "21.6", "k": "10.8  APPC", "kd": "10.8  " }, { "c": "PIVX", "i": "https://ex.bnbstatic.com/file/resources/img/20180123/image_1516677190423.png", "n": "PIVX", "w": "0.1", "k": "0.02  PIVX", "kd": "0.02  " }];
+
+                //var stream = { "stream": "trxbtc@trade", "data": { "e": "trade", "E": 1526959752709, "s": "TRXBTC", "t": 28053689, "p": "0.00000958", "q": "9142.00000000", "b": 53097773, "a": 53098247, "T": 1526959752706, "m": true, "M": true } };
+                //var offerUpdate = { "stream": "trxbtc@depth", "data": { "e": "depthUpdate", "E": 1526961232090, "s": "TRXBTC", "U": 75950762, "u": 75950771, "b": [["0.00000954", "0.00000000", []], ["0.00000953", "416903.00000000", []], ["0.00000951", "965715.00000000", []]], "a": [["0.00000954", "0.00000000", []], ["0.00000955", "582072.00000000", []], ["0.00000957", "110761.00000000", []], ["0.00000960", "261779.00000000", []], ["0.00000980", "1119789.00000000", []]] } };
+
+    </script>
+</body>
+</html>

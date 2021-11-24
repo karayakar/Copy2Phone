@@ -1,0 +1,17 @@
+﻿<script id="entry-template" type="text/x-handlebars-template">
+    <div class="post">
+        <h1>By {{fullName author}}</h1>
+        <div class="body">{{body}}</div>
+        <h1>Comments</h1>
+        {{#if comments}}
+        <ul>
+            {{#each comments}}
+            <li>
+                By {{fullName author}}
+                <div class="body">{{body}}</div>
+            </li>
+            {{/each}}
+        </ul>
+        {{/if}}
+    </div>
+</script>

@@ -1,0 +1,195 @@
+﻿
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Copy text between your devices">
+    <meta name="author" content="Karay Akar">
+    <meta name="generator" content="Hugo 0.88.1">
+    <title>cp2ph - Copy to Phone - Copying simplified</title>
+
+    <link href="/css/bootstrap.min.css" rel="stylesheet"   crossorigin="anonymous">
+    <script src="js/jquery.min.js"></script>
+    
+    <meta name="theme-color" content="#7952b3">
+
+
+    <style>
+        .bd-placeholder-img {
+            font-size: 1.125rem;
+            text-anchor: middle;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+
+        @media (min-width: 768px) {
+            .bd-placeholder-img-lg {
+                font-size: 3.5rem;
+            }
+        }
+    </style>
+
+ 
+</head>
+<body>
+
+    <main>
+        
+
+
+        <div class="px-4 py-5 my-5 text-center">
+
+            <h1 class="display-5 fw-bold">Copy any text to phone</h1>
+            <div class="col-lg-6 mx-auto">
+                <p class="lead mb-4">Scan QR code from your phone and join the session between devices</p>
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+
+                    
+                    <div id="status"></div>
+                </div><p id="qr"></p>
+            </div>
+        </div>
+
+        <div class="b-example-divider"></div>
+
+        <div class="px-4 py-5 my-5 text-center">
+
+            <h1 class="display-5 fw-bold"> </h1>
+            <div class="col-lg-6 mx-auto">
+                <p class="lead mb-4"> </p>
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                    <textarea id="txt" style="width:80%;height:200px"></textarea><br />
+                    
+
+                </div>
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                   
+                    <button id="copybtn" type="button"   class="btn btn-primary btn-lg px-4 gap-3">Copy</button>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <script src="/js/bootstrap.bundle.min.js"   crossorigin="anonymous"></script>
+
+    <script>
+
+
+        function uuidv4() {
+            return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+        }
+        function getParameterByName(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+        var useuuid = getParameterByName('uuid');
+
+
+       
+        if (useuuid === null || useuuid === '') {
+            useuuid = uuidv4();
+        }
+
+        var locationUrl = document.location.hostname;
+        var copybtn = document.getElementById("copybtn");
+        var txtmsg = document.getElementById("txt");
+
+        var scheme = document.location.protocol == "https:" ? "wss" : "ws";
+        var imageScheme = document.location.protocol == "https:" ? "https" : "http";
+        var port = document.location.port ? (":" + document.location.port) : "";
+        var code = imageScheme + "://" + locationUrl + port + "/index.html?uuid=" + useuuid;
+
+        var connectionUrl = scheme + "://" + locationUrl + port + "/hub/" + useuuid;
+        var imageUrl = imageScheme + "://" + locationUrl + port + "/api/qr/getqrimg?code=" + code;
+
+        var socket;
+
+        function updateState() {
+            function disable() {
+               
+            }
+            function enable() {
+                
+            }
+
+
+            if (!socket) {
+                disable();
+            } else {
+                switch (socket.readyState) {
+                    case WebSocket.CLOSED:
+                         
+                        disable();
+                        
+                        break;
+                    case WebSocket.CLOSING:
+                        
+                        disable();
+                        break;
+                    case WebSocket.CONNECTING:
+                         
+                        disable();
+                        break;
+                    case WebSocket.OPEN:
+                        
+                        enable();
+                        break;
+                    default:
+                       
+                        disable();
+                        break;
+                }
+            }
+        }
+
+        function connect() {
+            socket = new WebSocket(connectionUrl);
+            socket.onopen = function (event) {
+                updateState();
+                $('#status').html('<p style="color:green">Connected</p>');
+                getqr();
+            };
+            socket.onclose = function (event) {
+                updateState();
+                $('#status').html('<p style="color:red">Disconnected</p>');
+            };
+            socket.onerror = updateState;
+            socket.onmessage = function (event) {
+                if (event.data) {
+
+                    $('#txt').val(event.data);
+                }
+            };
+        }
+
+        connect();
+
+        function getqr() {
+            $.get(imageUrl, function (data, status) {
+                $('#qr').html(data);
+            });
+            
+        }
+
+        copybtn.onclick = function () {
+            if (!socket || socket.readyState != WebSocket.OPEN) {
+                alert("socket not connected");
+            }
+              
+            socket.send(txtmsg.value);
+            
+        }
+
+    </script>
+</body>
+</html>

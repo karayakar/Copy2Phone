@@ -1,0 +1,696 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>AKAIS BOT debug</title>
+    <!-- Bootstrap Core CSS -->
+    <link href="Assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- MetisMenu CSS -->
+    <link href="Assets/vendor/metisMenu/metisMenu.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="Assets/dist/css/sb-admin-2.css" rel="stylesheet">
+    <!-- Custom Fonts -->
+    <link href="Assets/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href="css/epoch.min.css" rel="stylesheet" />
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <script src="js/jquery.min.js"></script>
+    <script src="js/smoothie.js"></script>
+    <script>
+        var HumidChart = new SmoothieChart();
+        var HumidChartData = new TimeSeries();
+        var TempChart = new SmoothieChart();
+        var TempChartData = new TimeSeries();
+        var PressChart = new SmoothieChart();
+        var PressChartData = new TimeSeries();
+    </script>
+
+</head>
+<body>
+    <div id="wrapper">
+        <!-- Navigation -->
+
+        <div id="akaisbot" style="display:none" :style="[loaded ? '':{display:'none'}]" ref="akaisbot">
+            <input v-model.lazy="dataInput" id="dataInput" @change="dataReceived" @click="dataReceived" style="display:none">
+            <span>{{ errors.first('inputbotid') }}</span>
+            <div class="row">
+                <div class="col-lg-3">
+                    <canvas data-type="radial-gauge"
+                            :data-value="[Pressure ? Pressure:0]"
+                            data-width="250"
+                            data-height="205"
+                            data-units="Pha *10"
+                            data-min-value="0"
+                            data-start-angle="0"
+                            data-ticks-angle="180"
+                            data-value-box="false"
+                            data-max-value="220"
+                            data-major-ticks="0,20,40,60,80,100,120,140,160,180,200,220"
+                            data-minor-ticks="2"
+                            data-stroke-ticks="true"
+                            data-highlights='[
+        {"from": 160, "to": 220, "color": "rgba(200, 50, 50, .75)"}
+    ]'
+                            data-color-plate="#fff"
+                            data-border-shadow-width="0"
+                            data-borders="false"
+                            data-needle-type="arrow"
+                            data-needle-width="2"
+                            data-needle-circle-size="7"
+                            data-needle-circle-outer="true"
+                            data-needle-circle-inner="false"
+                            data-animation-duration="1500"
+                            data-animation-rule="linear"
+                            data-animation-target="plate" style="margin:20px"></canvas><br />
+
+                    <canvas id="PressChart" width="200" height="100" style="margin:20px"></canvas>
+                </div>
+                <div class="col-lg-3">
+
+                    <canvas data-type="radial-gauge" data-width="200" data-units="Humidity"
+                            data-height="200" :data-value="[Humidity ? Humidity:0]" style="margin:20px"></canvas><br />
+                    <canvas id="HumidChart" width="200" height="100" style="margin:20px"></canvas>
+
+                </div>
+                <div class="col-lg-6">
+
+
+                    <canvas style="margin:20px" data-type="linear-gauge" :data-value="[Temperature ? Temperature:0]"
+                            data-width="600"
+                            data-height="200"
+                            data-units="°F"
+                            data-title="Temperature"
+                            data-min-value="-100"
+                            data-max-value="100"
+                            data-major-ticks="[-100,-90,-80,-70,-60,-50,-40,-30,-20,-10,0,10,20,30,40,50,60,70,80,90,100]"
+                            data-minor-ticks="5"
+                            data-stroke-ticks="true"
+                            data-ticks-width="15"
+                            data-ticks-width-minor="7.5"
+                            data-highlights='[ {"from": -100, "to": 0, "color": "rgba(0,0, 255, .3)"},
+        {"from": 0, "to": 100, "color": "rgba(255, 0, 0, .3)"} ]'
+                            data-color-major-ticks="#ffe66a"
+                            data-color-minor-ticks="#ffe66a"
+                            data-color-title="#eee"
+                            data-color-units="#ccc"
+                            data-color-numbers="#eee"
+                            data-color-plate="#2465c0"
+                            data-color-plate-end="#327ac0"
+                            data-border-shadow-width="0"
+                            data-borders="false"
+                            data-border-radius="10"
+                            data-needle-type="arrow"
+                            data-needle-width="3"
+                            data-animation-duration="1500"
+                            data-animation-rule="linear"
+                            data-color-needle="#222"
+                            data-color-needle-end=""
+                            data-color-bar-progress="#327ac0"
+                            data-color-bar="#f5f5f5"
+                            data-bar-stroke="0"
+                            data-bar-width="8"
+                            data-bar-begin-circle="false"></canvas><br />
+                    <canvas id="TempChart" width="600" height="100" style="margin:20px"></canvas>
+                </div>
+
+            </div>
+
+
+            <div class="row">
+                <div class="col-lg-3"></div>
+
+                <div class="col-lg-6">
+                    <br /><br />
+                    <div class="panel panel-primary">
+
+                        <div class="panel-body">
+
+
+
+                            <div class="row">
+                                <div class="col-lg-4">
+                                    <canvas data-type="radial-gauge" :data-value="[MagnetoX ? MagnetoX:0]"
+                                            data-min-value="-180"
+                                            data-max-value="180"
+                                            data-major-ticks="180,-135,-90,-45,0,45,90,135,180"
+                                            data-minor-ticks="22"
+                                            data-ticks-angle="360"
+                                            data-start-angle="180"
+                                            data-stroke-ticks="false"
+                                            data-highlights="false"
+                                            data-color-plate="#ff0000"
+                                            data-color-major-ticks="#f5f5f5"
+                                            data-color-minor-ticks="#ddd"
+                                            data-color-numbers="#ccc"
+                                            data-color-needle="rgba(240, 128, 128, 1)"
+                                            data-color-needle-end="rgba(255, 160, 122, .9)"
+                                            data-value-box="false"
+                                            data-value-text-shadow="false"
+                                            data-color-circle-inner="#fff"
+                                            data-color-needle-circle-outer="#ccc"
+                                            data-needle-circle-size="15"
+                                            data-needle-circle-outer="false"
+                                            data-animation-rule="linear"
+                                            data-needle-type="line"
+                                            data-needle-start="75"
+                                            data-needle-end="99"
+                                            data-needle-width="3"
+                                            data-borders="true"
+                                            data-border-inner-width="0"
+                                            data-border-middle-width="0"
+                                            data-border-outer-width="10"
+                                            data-color-border-outer="#ccc"
+                                            data-color-border-outer-end="#ccc"
+                                            data-color-needle-shadow-down="#222"
+                                            data-border-shadow-width="0"
+                                            data-animation-duration="1500"></canvas>
+                                    <br />X
+                                </div>
+                                <div class="col-lg-4">
+                                    <canvas data-type="radial-gauge" :data-value="[MagnetoY ? MagnetoY:0]"
+                                            data-min-value="-180"
+                                            data-max-value="180"
+                                            data-major-ticks="180,-135,-90,-45,0,45,90,135,180"
+                                            data-minor-ticks="22"
+                                            data-ticks-angle="360"
+                                            data-start-angle="180"
+                                            data-stroke-ticks="false"
+                                            data-highlights="false"
+                                            data-color-plate="#00ff00"
+                                            data-color-major-ticks="#f5f5f5"
+                                            data-color-minor-ticks="#ddd"
+                                            data-color-numbers="#ccc"
+                                            data-color-needle="rgba(240, 128, 128, 1)"
+                                            data-color-needle-end="rgba(255, 160, 122, .9)"
+                                            data-value-box="false"
+                                            data-value-text-shadow="false"
+                                            data-color-circle-inner="#fff"
+                                            data-color-needle-circle-outer="#ccc"
+                                            data-needle-circle-size="15"
+                                            data-needle-circle-outer="false"
+                                            data-animation-rule="linear"
+                                            data-needle-type="line"
+                                            data-needle-start="75"
+                                            data-needle-end="99"
+                                            data-needle-width="3"
+                                            data-borders="true"
+                                            data-border-inner-width="0"
+                                            data-border-middle-width="0"
+                                            data-border-outer-width="10"
+                                            data-color-border-outer="#ccc"
+                                            data-color-border-outer-end="#ccc"
+                                            data-color-needle-shadow-down="#222"
+                                            data-border-shadow-width="0"
+                                            data-animation-duration="1500"></canvas>
+                                    <br />Y
+                                </div>
+                                <div class="col-lg-4">
+                                    <canvas data-type="radial-gauge" :data-value="[MagnetoZ ? MagnetoZ:0]"
+                                            data-min-value="-180"
+                                            data-max-value="180"
+                                            data-major-ticks="180,-135,-90,-45,0,45,90,135,180"
+                                            data-minor-ticks="22"
+                                            data-ticks-angle="360"
+                                            data-start-angle="180"
+                                            data-stroke-ticks="false"
+                                            data-highlights="false"
+                                            data-color-plate="#0000ff"
+                                            data-color-major-ticks="#f5f5f5"
+                                            data-color-minor-ticks="#ddd"
+                                            data-color-numbers="#ccc"
+                                            data-color-needle="rgba(240, 128, 128, 1)"
+                                            data-color-needle-end="rgba(255, 160, 122, .9)"
+                                            data-value-box="false"
+                                            data-value-text-shadow="false"
+                                            data-color-circle-inner="#fff"
+                                            data-color-needle-circle-outer="#ccc"
+                                            data-needle-circle-size="15"
+                                            data-needle-circle-outer="false"
+                                            data-animation-rule="linear"
+                                            data-needle-type="line"
+                                            data-needle-start="75"
+                                            data-needle-end="99"
+                                            data-needle-width="3"
+                                            data-borders="true"
+                                            data-border-inner-width="0"
+                                            data-border-middle-width="0"
+                                            data-border-outer-width="10"
+                                            data-color-border-outer="#ccc"
+                                            data-color-border-outer-end="#ccc"
+                                            data-color-needle-shadow-down="#222"
+                                            data-border-shadow-width="0"
+                                            data-animation-duration="1500"></canvas><br />
+                                    Z
+                                </div>
+                            </div>
+                            <div class="row">
+
+                                <div class="col-lg-12">Magnetometer</div>
+                            </div>
+
+
+                            <div class="row">
+                                <div class="col-lg-4">
+                                    <canvas data-type="radial-gauge"
+                                            :data-value="[GyroX ? GyroX:0]"
+                                            data-min-value="-180"
+                                            data-max-value="180"
+                                            data-major-ticks="180,-135,-90,-45,0,45,90,135,180"
+                                            data-minor-ticks="22"
+                                            data-ticks-angle="360"
+                                            data-start-angle="180"
+                                            data-stroke-ticks="false"
+                                            data-highlights="false"
+                                            data-color-plate="#3a3"
+                                            data-color-major-ticks="#f5f5f5"
+                                            data-color-minor-ticks="#ddd"
+                                            data-color-numbers="#ccc"
+                                            data-color-needle="rgba(240, 128, 128, 1)"
+                                            data-color-needle-end="rgba(255, 160, 122, .9)"
+                                            data-value-box="false"
+                                            data-value-text-shadow="false"
+                                            data-color-circle-inner="#fff"
+                                            data-color-needle-circle-outer="#ccc"
+                                            data-needle-circle-size="15"
+                                            data-needle-circle-outer="false"
+                                            data-animation-rule="linear"
+                                            data-needle-type="line"
+                                            data-needle-start="75"
+                                            data-needle-end="99"
+                                            data-needle-width="3"
+                                            data-borders="true"
+                                            data-border-inner-width="0"
+                                            data-border-middle-width="0"
+                                            data-border-outer-width="10"
+                                            data-color-border-outer="#ccc"
+                                            data-color-border-outer-end="#ccc"
+                                            data-color-needle-shadow-down="#222"
+                                            data-border-shadow-width="0"
+                                            data-animation-duration="1500"></canvas>
+                                    <br />X
+                                </div>
+                                <div class="col-lg-4">
+                                    <canvas data-type="radial-gauge"
+                                            :data-value="[GyroY ? GyroY:0]"
+                                            data-min-value="-180"
+                                            data-max-value="180"
+                                            data-major-ticks="180,-135,-90,-45,0,45,90,135,180"
+                                            data-minor-ticks="22"
+                                            data-ticks-angle="360"
+                                            data-start-angle="180"
+                                            data-stroke-ticks="false"
+                                            data-highlights="false"
+                                            data-color-plate="#222"
+                                            data-color-major-ticks="#f5f5f5"
+                                            data-color-minor-ticks="#ddd"
+                                            data-color-numbers="#ccc"
+                                            data-color-needle="rgba(240, 128, 128, 1)"
+                                            data-color-needle-end="rgba(255, 160, 122, .9)"
+                                            data-value-box="false"
+                                            data-value-text-shadow="false"
+                                            data-color-circle-inner="#fff"
+                                            data-color-needle-circle-outer="#ccc"
+                                            data-needle-circle-size="15"
+                                            data-needle-circle-outer="false"
+                                            data-animation-rule="linear"
+                                            data-needle-type="line"
+                                            data-needle-start="75"
+                                            data-needle-end="99"
+                                            data-needle-width="3"
+                                            data-borders="true"
+                                            data-border-inner-width="0"
+                                            data-border-middle-width="0"
+                                            data-border-outer-width="10"
+                                            data-color-border-outer="#ccc"
+                                            data-color-border-outer-end="#ccc"
+                                            data-color-needle-shadow-down="#222"
+                                            data-border-shadow-width="0"
+                                            data-animation-duration="1500"></canvas>
+                                    <br />Y
+                                </div>
+                                <div class="col-lg-4">
+                                    <canvas data-type="radial-gauge"
+                                            :data-value="[GyroZ ? GyroZ:0]"
+                                            data-min-value="-180"
+                                            data-max-value="180"
+                                            data-major-ticks="180,-135,-90,-45,0,45,90,135,180"
+                                            data-minor-ticks="22"
+                                            data-ticks-angle="360"
+                                            data-start-angle="180"
+                                            data-stroke-ticks="false"
+                                            data-highlights="false"
+                                            data-color-plate="#ff0000"
+                                            data-color-major-ticks="#f5f5f5"
+                                            data-color-minor-ticks="#ddd"
+                                            data-color-numbers="#ccc"
+                                            data-color-needle="rgba(240, 128, 128, 1)"
+                                            data-color-needle-end="rgba(255, 160, 122, .9)"
+                                            data-value-box="false"
+                                            data-value-text-shadow="false"
+                                            data-color-circle-inner="#fff"
+                                            data-color-needle-circle-outer="#ccc"
+                                            data-needle-circle-size="15"
+                                            data-needle-circle-outer="false"
+                                            data-animation-rule="linear"
+                                            data-needle-type="line"
+                                            data-needle-start="75"
+                                            data-needle-end="99"
+                                            data-needle-width="3"
+                                            data-borders="true"
+                                            data-border-inner-width="0"
+                                            data-border-middle-width="0"
+                                            data-border-outer-width="10"
+                                            data-color-border-outer="#ccc"
+                                            data-color-border-outer-end="#ccc"
+                                            data-color-needle-shadow-down="#222"
+                                            data-border-shadow-width="0"
+                                            data-animation-duration="1500"></canvas><br />
+                                    Z
+                                </div>
+                            </div>
+                            <div class="row">
+
+                                <div class="col-lg-12">Gyroscope</div>
+                            </div>
+                            <br />
+
+
+
+                        </div>
+                        <div class="panel-footer">
+
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3"></div>
+
+
+            </div>
+
+
+            <!-- /#page-wrapper -->
+        </div>
+    </div>
+
+
+    <script src="lib/vue/vue.js"></script>
+    <script src="js/axios.js"></script>
+    <script src="js/moment.js"></script>
+
+    <script src="Vue/vee-validate.js"></script>
+    <script src="Vue/en.js"></script>
+    <script src="Vue/gauge.min.js"></script>
+    <script>
+
+        var dict = {
+            custom: {
+                inputbotid: {
+                    required: 'Bot Id is required..'
+                },
+                name: {
+                    required: () => 'Your name is empty'
+                }
+            }
+        };
+
+        this.VeeValidate.Validator.localize('en', dict);
+        Vue.use(VeeValidate);
+        Vue.filter('formatDate', function (value) {
+            if (value) {
+                return moment(String(value)).format('MM/DD/YYYY hh:mm')
+            }
+        });
+
+        var debugApp = new Vue({
+            el: '#akaisbot',
+
+            data: {
+                dataReceived: function (evt, v) {
+                    if (evt && evt.srcElement) {
+                        var data = JSON.parse(JSON.parse(evt.srcElement.value));
+                        console.log('>>>>');
+                        console.log(data);
+                        debugApp.Pressure = (data.Pressure.Pha / 10);
+                        debugApp.Humidity = data.Humidity.Humid;
+
+                        debugApp.Temperature = data.Temp.F;
+                        debugApp.MagnetoX = data.Magnetometer.x;
+                        debugApp.MagnetoY = data.Magnetometer.y;
+                        debugApp.MagnetoZ = data.Magnetometer.z;
+                        debugApp.GyroX = data.Gyroscope.x;
+                        debugApp.GyroY = data.Gyroscope.y;
+                        debugApp.GyroZ = data.Gyroscope.z;
+                        HumidChartData.append(new Date().getTime(), data.Humidity.Humid);
+                        TempChartData.append(new Date().getTime(), data.Temp.F);
+                        PressChartData.append(new Date().getTime(), (data.Pressure.Pha));
+                    }
+
+                },
+                dataInput: "",
+                Pressure: 0,
+                Humidity: 0,
+
+                UpdateHumid: function () {
+                    myChart.update(myData);
+                },
+                Temperature: 0,
+                MagnetoX: 0,
+                MagnetoY: 0,
+                MagnetoZ: 0,
+                GyroX: 0,
+                GyroY: 0,
+                GyroZ: 0,
+                loaded: false,
+                botId: null,
+                botObj: null,
+                loggedIn: false,
+                isLoggedIn: false,
+
+                isViewReady: false,
+                activeTab: 'debug',
+                activeConversation: null,
+                activeConversationObjectId: -1,
+                chatConversations: [],
+                currentChatSendItem: { "botid": "", "Activity": "", "Step": 0, "Expression": "" },
+                audioDing: new Audio('assets/ding.mp3'),
+                audioDong: new Audio('assets/dong.mp3'),
+                quickAddText: null,
+                quickadd: []
+            },
+            methods: {
+                testcall() {
+                    var method = this.activeConversation.conversation.ApiResponse.method;
+                    var url = this.activeConversation.conversation.ApiResponse.Url;
+                    if (method === 'GET') {
+
+                        this.httpget(url).then(response => {
+                            var elem = document.getElementById('responsebox');
+                            if (elem) {
+
+                                elem.value = JSON.stringify(response);
+                            }
+
+                        });
+
+
+                    }
+                },
+                processQuickAdd() {
+                    if (this.quickAddText) {
+                        var lines = this.quickAddText.split('\n');
+                        var question = null;
+                        var answer = null;
+                        for (var i = 0; i < lines.length; i++) {
+                            if (lines[i].indexOf('Q:') != -1) {
+                                question = lines[i].replace('Q:', '');
+                            }
+                            if (lines[i].indexOf('A:') != -1) {
+                                answer = lines[i].replace('A:', '');
+                            }
+                            if (question && answer) {
+                                var activity = JSON.parse(JSON.stringify(this.botMessage));
+                                activity.botid = this.botId;
+                                activity.conversation.inputTerm = question;
+                                activity.conversation.responseText = answer;
+                                //debugger;
+                                this.botObj.push(JSON.parse(JSON.stringify(activity)));
+                                question = null;
+                                answer = null;
+                            }
+
+                            //code here using lines[i] which will give you each line
+                        }
+                    }
+                },
+                tabChange: function (tab) {
+                    if (tab) {
+                        this.activeTab = tab;
+                    }
+                },
+                botloginClick: function (event) {
+
+                    var botid = this.botId;
+                    if (botid) {
+                        this.httpget("api/nodejs/getbotconfig?botid=" + botid).then(response => {
+                            this.isLoggedIn = true;
+                            this.botObj = response;
+                            if (localStorage) {
+                                localStorage.setItem('botid', this.botId);
+                            }
+                        });
+
+                    } else {
+                        alert('please specify botid');
+                    }
+                },
+                itemClicked: function (a) {
+                    this.activeTab = 'debug';
+                    if (a != null) {
+                        this.activeConversationObjectId = a;
+                        this.activeConversation = JSON.parse(JSON.stringify(this.botObj[a]));
+                    }
+
+                },
+                scrolldiv: function (e) {
+
+                    Vue.nextTick()
+                        .then(function () {
+                            if (e) {
+
+                            } else {
+                                e = 'chatwindowholder';
+                            }
+                            var elem = document.getElementById(e);
+                            if (elem) {
+                                var scHeight = elem.scrollHeight;
+                                elem.scrollTo(0, elem.scrollHeight + 200);
+                            }
+                        });
+
+                },
+                sendMessage: function () {
+                    if (this.currentChatSendItem.Expression != '') {
+                        var data = JSON.parse(JSON.stringify(this.currentChatSendItem));
+                        this.currentChatSendItem.Expression = '';
+                        data.botid = this.botId;
+                        var url = 'api/nodejs/Eval';
+                        var pushToScreen = data;
+                        pushToScreen.Time = moment(String(new Date())).format('MM/DD/YYYY hh:mm');
+                        pushToScreen.from = 'you';
+                        this.chatConversations.push(pushToScreen);
+                        this.audioDing.play();
+                        this.httppost(url, data).then(response => {
+                            if (response) {
+                                response.data.Time = moment(String(new Date())).format('MM/DD/YYYY hh:mm');
+                                response.data.from = 'bot';
+                                this.audioDong.play();
+                                this.chatConversations.push(response.data);
+                                this.scrolldiv('chatwindowholder');
+                            }
+                        });
+                    } else {
+                        alert('please type a message to your bot.');
+                    }
+                    //debugger;
+                    //this.$refs.chatwindow.scrollTop = this.$refs.chatwindow.scrollHeight;
+                },
+                creteinput: function () {
+                    this.botObj.push(this.activeConversation);
+                    this.activeConversationObjectId = this.botObj.length;
+
+                },
+                saveinput: function () {
+                    this.botObj[this.activeConversationObjectId] = JSON.parse(JSON.stringify(this.activeConversation));
+                    this.botObj = JSON.parse(JSON.stringify(this.botObj));
+                    console.log(this.botObj);
+                    console.log(JSON.stringify(this.botObj));
+                    var url = "api/nodejs/saveBot?botid=" + this.botId;
+                    var data = this.botObj;
+                    this.httppost(url, data).then(() => { alert('Saved'); });
+                },
+                deleteinput: function () {
+                    this.botObj.pop([this.activeConversationObjectId], 1);
+                    this.botObj = JSON.parse(JSON.stringify(this.botObj));
+                    this.activeConversation = null;
+                    this.activeConversationObjectId = -1;
+                },
+                clearinput: function () {
+                    this.activeConversation = null;
+                    this.activeConversationObjectId = -1;
+                },
+                addHeaderValue: function () {
+                    if (this.activeConversation && this.activeConversation.conversation && this.activeConversation.conversation.ApiResponse) {
+                        this.activeConversation.conversation.ApiResponse.headers.push({ "key": "", "value": "" });
+                    }
+                },
+                removeHeaderValue: function (a) {
+                    if (this.activeConversation && this.activeConversation.conversation && this.activeConversation.conversation.ApiResponse) {
+                        this.activeConversation.conversation.ApiResponse.headers.pop(a, 1);
+                    }
+                },
+                httpget: function (url) {
+                    return axios.get(url)
+                        .then(response => {
+                            return response.data
+                        });
+
+                },
+                httppost: function (url, data) {
+
+                    return axios.post(url, data)
+                        .then(response => {
+
+                            return response;
+                        });
+
+
+                },
+                clearinput: function () {
+                    //
+                },
+                refreshData: function () {
+                    this.isViewReady = false;
+
+                },
+            },
+
+            created: function () {
+                this.loaded = true;
+
+
+                Vue.nextTick()
+                    .then(function () {
+
+                        var elem = document.getElementById('akaisbot');
+                        if (elem) {
+                            elem.removeAttribute('style');
+                        }
+                    });
+
+            },
+
+            mounted() {
+                this.loaded = true;
+                HumidChart.addTimeSeries(HumidChartData, { strokeStyle: 'rgba(0, 255, 0, 1)', fillStyle: 'rgba(0, 255, 0, 0.2)', lineWidth: 4 });
+                HumidChart.streamTo(document.getElementById("HumidChart"), 500);
+                TempChart.addTimeSeries(TempChartData, { strokeStyle: 'rgba(0, 255, 0, 1)', fillStyle: 'rgba(0, 255, 0, 0.2)', lineWidth: 4 });
+                TempChart.streamTo(document.getElementById("TempChart"), 500);
+                PressChart.addTimeSeries(PressChartData, { strokeStyle: 'rgba(0, 255, 0, 1)', fillStyle: 'rgba(0, 255, 0, 0.2)', lineWidth: 4 });
+                PressChart.streamTo(document.getElementById("PressChart"), 500);
+            }
+        });
+
+
+    </script>
+    <script src="Vue/socket.js"></script>
+</body>
+
+</html>
