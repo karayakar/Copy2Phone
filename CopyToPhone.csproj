@@ -14,6 +14,19 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <Compile Remove="Properties\PublishProfiles\**" />
+    <Compile Remove="Properties\ServiceDependencies\**" />
+    <Content Remove="Properties\PublishProfiles\**" />
+    <Content Remove="Properties\ServiceDependencies\**" />
+    <EmbeddedResource Remove="Properties\PublishProfiles\**" />
+    <EmbeddedResource Remove="Properties\ServiceDependencies\**" />
+    <None Remove="Properties\PublishProfiles\**" />
+    <None Remove="Properties\ServiceDependencies\**" />
+    <_WebToolingArtifacts Remove="Properties\PublishProfiles\**" />
+    <_WebToolingArtifacts Remove="Properties\ServiceDependencies\**" />
+  </ItemGroup>
 
   <ItemGroup>
     
